@@ -19,16 +19,15 @@ import phone_scan
 
 
 def do_log(args):
-    dev, _ = phone_scan.open_device(args.uri, args.freq, args.samplerate,
-                                    args.samplerate, args.gain)
-    phy = dev
+    phy, lpc = phone_scan.open_device(args.uri, args.freq, args.samplerate,
+                                      args.samplerate, args.gain)
     phy.find_channel("altvoltage0", True).attrs["frequency"].value = str(int(args.freq))
     print(f"dwelling on {args.freq/1e6:.0f} MHz; Enter to sample, Ctrl-C to stop")
     try:
         with open(args.out, "a") as out:
             while True:
                 input()
-                iq = phone_scan.dwell(dev, args.samplerate, 0.5)
+                iq = phone_scan.dwell(lpc, args.samplerate, 0.5)
                 res = phone_scan.analyze(iq, args.samplerate, args.margin_db)
                 power = round(res[2], 2) if res else None
                 pos = input("position? ").strip()

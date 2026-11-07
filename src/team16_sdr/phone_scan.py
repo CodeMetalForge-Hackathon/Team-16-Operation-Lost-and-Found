@@ -20,44 +20,44 @@ FULL_SCALE = 2048.0   # 12-bit IQ full scale
 
 def open_device(uri, freq, samplerate, bw, gain):
     import iio
-    dev = iio.Context(uri).find_device("ad9361-phy")
-    phy = dev  # attrs live on the phy device channels
+    ctx = iio.Context(uri)
+    phy = ctx.find_device("ad9361-phy")
     phy.find_channel("altvoltage0", True).attrs["frequency"].value = str(int(freq))
     v0 = phy.find_channel("voltage0", False)
     v0.attrs["gain_control_mode"].value = "manual"
     v0.attrs["hardwaregain"].value = str(int(gain))
     v0.attrs["sampling_frequency"].value = str(int(samplerate))
     v0.attrs["rf_bandwidth"].value = str(int(bw))
-    return dev, v0
+    lpc = ctx.find_device("cf-ad9361-lpc")
+    lpc.find_channel("voltage0", False).enabled = True  # I
+    lpc.find_channel("voltage1", False).enabled = True  # Q
+    return phy, lpc
 
 
-def dwell(dev, samplerate, seconds, buf_limit=32768):
-    """Capture `seconds` of complex IQ from voltage0. Returns int16 array."""
+def dwell(lpc, samplerate, seconds, buf_limit=32768):
+    """Capture `seconds` of complex IQ from cf-ad9361-lpc (I/Q int16)."""
     import iio
     n = int(samplerate * seconds)
-    buf = dev.create_buffer(min(n, buf_limit), cyclic=False)
-    chan = dev.find_channel("voltage0", False)
-    chan.enable = True
-    buf.enable_all_channels()
+    buf = iio.Buffer(lpc, min(n, buf_limit), cyclic=False)
     chunks = []
     got = 0
-    reads = 0
-    while got < n and reads < 4:
+    fails = 0
+    while got < n:
         try:
             data = buf.read()
+            fails = 0
         except Exception:
-            if reads >= 1:
+            fails += 1
+            if fails >= 2:
                 raise
-            reads += 1
             continue
         raw = np.frombuffer(data, dtype="<i2")
         chunks.append(raw)
         got += len(raw) // 2
-        reads += 1
     iq = np.concatenate(chunks) if len(chunks) > 1 else chunks[0]
     iq = iq[: 2 * (len(iq) // 2)]
-    i = iq[0::2].astype(np.float64)
-    q = iq[1::2].astype(np.float64)
+    i = (iq[0::2] >> 4).astype(np.float64)  # S12/16 left-aligned -> 12-bit
+    q = (iq[1::2] >> 4).astype(np.float64)
     return i + 1j * q
 
 
@@ -70,24 +70,31 @@ def analyze(iq, samplerate, margin_db):
     seg = 8192
     nseg = min(8, n // seg)
     win = np.hanning(seg)
-    psd = np.zeros(seg // 2 + 1)
+    psd = np.zeros(seg)
     for k in range(nseg):
         x = iq[k * seg:(k + 1) * seg] * win
-        f = np.fft.rfft(x)
+        f = np.fft.fftshift(np.fft.fft(x))
         psd += np.abs(f) ** 2
     psd /= nseg * (np.sum(win ** 2) * seg)
     db = 10 * np.log10(np.maximum(psd, 1e-30)) - 20 * np.log10(FULL_SCALE)
     floor = float(np.median(db))
     per_bin = samplerate / seg
     group = max(1, int(round(GROUP_HZ / per_bin)))
-    usable = (len(db) - 20) // group  # skip DC and edge bins
-    means = db[20:20 + usable * group].reshape(usable, group).mean(axis=1)
-    k = int(np.argmax(means))
-    best_db = float(means[k])
+    lo, hi = 20, seg - 20
+    usable = (hi - lo) // group
+    gm = psd[lo:lo + usable * group].reshape(usable, group).mean(axis=1)
+    gm_db = 10 * np.log10(np.maximum(gm, 1e-30)) - 20 * np.log10(FULL_SCALE)
+    dc = seg // 2  # fftshift puts DC at center; blank its group
+    for g in range(usable):
+        b0, b1 = lo + g * group, lo + (g + 1) * group
+        if b0 <= dc < b1:
+            gm_db[g] = -np.inf
+    k = int(np.argmax(gm_db))
+    best_db = float(gm_db[k])
     if best_db < floor + margin_db:
         return None
-    center_bin = 20 + k * group + group // 2
-    best_hz = int(round(center_bin * per_bin))
+    center_bin = lo + k * group + group // 2
+    best_hz = int(round((center_bin - seg // 2) * per_bin))
     return floor, best_hz, best_db
 
 
@@ -107,14 +114,13 @@ def main():
     args = ap.parse_args()
 
     channels = [int(c) for c in args.channels.split(",") if c.strip()]
-    dev, _ = open_device(args.uri, channels[0], args.samplerate,
-                         args.samplerate, args.gain)
+    phy, lpc = open_device(args.uri, channels[0], args.samplerate,
+                           args.samplerate, args.gain)
 
     def one_shot(freq, seconds):
-        phy = dev
         phy.find_channel("altvoltage0", True).attrs["frequency"].value = str(int(freq))
         time.sleep(0.05)
-        iq = dwell(dev, args.samplerate, seconds)
+        iq = dwell(lpc, args.samplerate, seconds)
         return analyze(iq, args.samplerate, args.margin_db)
 
     if args.once:
