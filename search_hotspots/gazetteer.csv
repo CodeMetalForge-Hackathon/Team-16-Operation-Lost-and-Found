@@ -1,0 +1,66 @@
+name,lat,lon,kind,aliases
+# APPROXIMATE coordinates (+/- a few hundred m). Verify against USGS/OSM before field use. aliases = regex matched against incident peak/trail/summary text.
+Mount Washington,44.2705,-71.3034,peak,mt\.? washington|mount washington|summit cone
+Mount Adams,44.3203,-71.2914,peak,mt\.? adams|mount adams|king ravine|air ?line
+Mount Jefferson,44.3043,-71.3170,peak,mt\.? jefferson|mount jefferson|caps ridge
+Mount Madison,44.3284,-71.2776,peak,mt\.? madison|mount madison|osgood
+Mount Monroe,44.2551,-71.3214,peak,monroe
+Mount Eisenhower,44.2406,-71.3504,peak,eisenhower|edmands|edmunds
+Mount Pierce,44.2272,-71.3656,peak,mt\.? pierce|mount pierce|mizpah
+Mount Isolation,44.2148,-71.3092,peak,isolation
+Mount Lafayette,44.1608,-71.6444,peak,lafayette|old bridle|skookumchuck
+Mount Lincoln,44.1487,-71.6446,peak,mt\.? lincoln|mount lincoln
+Little Haystack,44.1405,-71.6454,peak,haystack|falling waters
+Mount Liberty,44.1158,-71.6421,peak,mt\.? liberty|mount liberty|liberty spring
+Mount Flume,44.1085,-71.6286,peak,mt\.? flume|mount flume|flume slide
+Mount Garfield,44.1875,-71.6106,peak,garfield
+South Twin Mountain,44.1871,-71.5546,peak,south twin|twinway|galehead
+North Twin Mountain,44.2026,-71.5583,peak,north twin
+Mount Guyot,44.1617,-71.5306,peak,guyot
+Mount Bond,44.1529,-71.5313,peak,\bbond\b|bondcliff|west bond
+Zealand / Zeacliff,44.1900,-71.5000,peak,zealand|zeacliff
+Mount Carrigain,44.0934,-71.4466,peak,carrigain|signal ridge
+Mount Moosilauke,44.0245,-71.8313,peak,moosilauke|gorge brook|beaver brook|glencliff|snapper
+Mount Osceola,44.0011,-71.5359,peak,osceola
+Mount Tecumseh,43.9668,-71.5583,peak,tecumseh
+Mount Chocorua,43.9541,-71.2733,peak,chocorua|champney|piper trail|bee ?line|bolles
+Mount Willard,44.2030,-71.4170,peak,willard
+Mount Webster,44.1890,-71.3840,peak,webster
+Mount Crawford,44.1410,-71.3550,peak,mt\.? crawford|mount crawford|davis path
+Kearsarge North,44.0911,-71.0962,peak,kearsarge north
+Carter Dome,44.2673,-71.1789,peak,carter dome|mt\.? hight|carter notch|nineteen mile
+Wildcat Mountain,44.2588,-71.2010,peak,wildcat
+Mount Moriah,44.3403,-71.1311,peak,moriah|highwater|wild river
+Baldface,44.2420,-71.1010,peak,baldface|black angel
+Cannon Mountain,44.1564,-71.6981,peak,cannon|kinsman ridge
+Kinsman Pond,44.1350,-71.7450,feature,kinsman pond|kinsman
+Owl's Head,44.1470,-71.6060,peak,owl'?s head|lincoln brook|brutus
+Moat Mountain,44.0300,-71.2200,peak,moat
+Welch-Dickey,43.9090,-71.5860,peak,welch|dickey
+Iron Mountain,44.1500,-71.2300,peak,iron mountain
+Huntington Ravine,44.2650,-71.2860,feature,huntington
+Tuckerman Ravine,44.2590,-71.2990,feature,tuckerman|lion ?head
+Lakes of the Clouds Hut,44.2589,-71.3187,feature,lakes of the clouds|ammonoosuc ravine|jewell
+Great Gulf,44.2950,-71.2850,feature,great gulf|buttress trail|peabody
+Dry River,44.2000,-71.3500,feature,dry river|oakes gulf
+Pemigewasset Wilderness,44.1300,-71.4800,feature,pemigewasset wilderness|wilderness trail|stillwater|pemi loop|eastside trail
+Rocky Branch,44.1700,-71.2900,feature,rocky branch|glen boulder
+Arethusa Falls,44.1460,-71.3920,feature,arethusa|bemis
+Diana's Bath,44.0750,-71.1630,feature,diana
+Lafayette Place (Old Bridle Path TH),44.1420,-71.6810,trailhead,lafayette place|lafayette campground
+Pinkham Notch Visitor Center,44.2575,-71.2531,trailhead,pinkham
+Ammonoosuc Ravine TH (Cog Base),44.2667,-71.3523,trailhead,cog railway base
+Appalachia TH,44.3713,-71.2894,trailhead,appalachia
+Lincoln Woods TH,44.0635,-71.5880,trailhead,lincoln woods
+Champney Falls TH,43.9900,-71.2995,trailhead,champney falls trailhead
+Liberty Spring TH,44.1006,-71.6815,trailhead,liberty spring trailhead
+Crawford Notch Depot,44.2183,-71.4110,trailhead,crawford notch depot|highland center
+Gale River TH,44.2310,-71.6080,trailhead,gale river road
+Edmands Path TH,44.2465,-71.3920,trailhead,mt\.? clinton road
+Caps Ridge TH,44.2964,-71.3549,trailhead,jefferson notch
+Nineteen Mile Brook TH,44.3013,-71.2212,trailhead,nineteen mile brook trailhead
+Zealand Rd TH,44.2240,-71.4780,trailhead,zealand road
+Tripoli Rd Osceola TH,44.0200,-71.5520,trailhead,tripoli
+Sawyer River Rd TH,44.0900,-71.3830,trailhead,sawyer river
+Moosilauke Ravine Lodge,43.9946,-71.8150,trailhead,ravine lodge
+Welch-Dickey TH,43.9035,-71.5884,trailhead,welch-dickey trailhead
