@@ -78,6 +78,7 @@ function connectAll() {
   hostInput.removeAttribute("aria-invalid");
   hostInput.value = host;
   cards.forEach((card) => connectCard(card, host));
+  pollCalibration(host, document.querySelector("[data-action=recalibrate]"));
 }
 
 connectButton.addEventListener("click", connectAll);
@@ -97,11 +98,62 @@ cards.forEach((card) => {
     if (action === "open" && host) {
       window.open(sourceFor(card, host), "_blank", "noopener,noreferrer");
     }
+    if (action === "recalibrate") {
+      if (host) startCalibration(card, host);
+      else hostInput.focus();
+    }
     if (action === "fullscreen") {
       card.querySelector(".viewport").requestFullscreen?.();
     }
   });
 });
+
+const calStatus = document.querySelector("#cal-status");
+let calTimer = null;
+
+function showCalibration(info, button) {
+  const busy = info.state === "collecting";
+  calStatus.className = "cal-status " + (busy ? "busy" : /^Failed/.test(info.message) ? "bad" : info.calibrated ? "ok" : "");
+  if (busy) {
+    calStatus.textContent = "Calibrating " + info.samples + "/" + info.needed + " frames, " + info.secs_left +
+      "s left. Stand alone in view of both cameras and move slowly side to side.";
+  } else {
+    calStatus.textContent = info.message || (info.calibrated ? "Alignment: calibrated" : "Alignment: not calibrated (rough guess)");
+  }
+  if (button) button.disabled = busy;
+}
+
+async function calibrationCall(host, path) {
+  const response = await fetch("http://" + host + ":8081" + path, { cache: "no-store" });
+  if (!response.ok) throw new Error("HTTP " + response.status);
+  return response.json();
+}
+
+async function pollCalibration(host, button) {
+  clearTimeout(calTimer);
+  try {
+    const info = await calibrationCall(host, "/calibrate/status");
+    showCalibration(info, button);
+    if (info.state === "collecting") calTimer = setTimeout(() => pollCalibration(host, button), 1000);
+  } catch {
+    calStatus.className = "cal-status bad";
+    calStatus.textContent = "Could not reach the calibration service on the Pi";
+    if (button) button.disabled = false;
+  }
+}
+
+async function startCalibration(card, host) {
+  const button = card.querySelector("[data-action=recalibrate]");
+  button.disabled = true;
+  try {
+    showCalibration(await calibrationCall(host, "/calibrate"), button);
+    calTimer = setTimeout(() => pollCalibration(host, button), 1000);
+  } catch {
+    calStatus.className = "cal-status bad";
+    calStatus.textContent = "Could not reach the calibration service on the Pi";
+    button.disabled = false;
+  }
+}
 
 const queryHost = new URLSearchParams(location.search).get("host");
 const savedHost = localStorage.getItem(storageKey);

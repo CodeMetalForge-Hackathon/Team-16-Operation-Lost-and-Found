@@ -1,4 +1,4 @@
-# Team 16 ROS 2 workspace
+# Team 16
 
 ## Live sensor dashboard
 
@@ -7,10 +7,8 @@ Start the dashboard from the repository root:
     python dashboard/serve.py
 
 Open the local address printed by the server, enter the Pi hostname or IP
-address, and select **Connect screens**. The dashboard shows the visible-camera
-screen on port 8080 and the thermal screen on port 8081.
-
-Colcon workspace for ROS 2 Jazzy. Clone this repo and build it on any machine that has Jazzy Desktop installed. Build products (`build/`, `install/`, `log/`) stay local and are not committed.
+address, and select **Connect screens**. The dashboard shows the fused detection screen on port 8081 and
+the thermal screen on port 8082.
 
 ## Windows thermal demo
 
@@ -78,6 +76,30 @@ V4L2 path, and crop rows 196:388 as on Windows. On one USB port the camera faile
 handshake (`Failed to query (130) UVC probe control`); on another port it worked. If it will not
 open, try a different port first.
 
+## Fused thermal + visible detection (Pi)
+
+`thermal/fusion_pi.py` runs both cameras and one shared Hailo-8 in a single process: YOLOv8s finds
+people in the Pi Cam 3 (color) and the HT-203U (gray), the RandomForest scores the thermal frame, and
+each visible person box is checked for a hotspot inside it. Labels: HUMAN (shape + heat), UNCONFIRMED,
+NO HEAT (decoy?), THERMAL ONLY (heat, no visible person). `thermal/fusion_web.py` is a separate
+process that serves the results so the Hailo loop can never starve the web server.
+
+On the Pi (stop other feeds first; only one process can own the Hailo and the Pi camera):
+
+```bash
+~/team16_thermal/thermal/start_fusion.sh            # add --record to save paired frames
+~/team16_thermal/thermal/stop_fusion.sh
+```
+
+Fused view (visible cropped to the thermal field of view) on `:8081`, thermal view on `:8082`, and the
+dashboard on `:8090`. The visible camera is rotated 180 degrees and uses the full-field 2304x1296 sensor
+mode (the default 1280x720 pick is a centre crop). Align the two cameras with the dashboard's
+**Recalibrate** button: stand alone in view of both cameras and move slowly for up to 30 s. It writes
+`thermal/fusion_calib.json` (not committed; it depends on how the cameras are mounted). Manual
+alternative: `thermal/calibrate_fusion.py` with a pair saved by `--record`. Without calibration the
+overlay says UNCALIBRATED and the alignment is only a rough guess. The fusion weights are hand-set,
+not trained, and no accuracy has been measured yet.
+
 ## Thermal canopy fusion (see through foliage)
 
 `thermal/thermal_stitch.py` projects many drone frames onto a common ground grid using each
@@ -114,32 +136,3 @@ To run it on the Pi and watch from your PC, copy `picam_color_anomaly.py` to the
 `python3 picam_color_anomaly.py --source local --headless --serve 8080`, then open
 `http://<pi address>:8080/`. Relearn there with `touch ~/relearn`.
 `picam/setup_picam.sh` builds libcamera for the Pi 5 on Ubuntu 24.04.
-
-## Requirements
-
-- Ubuntu 24.04
-- ROS 2 Jazzy Desktop (`/opt/ros/jazzy`)
-- `colcon` and `rosdep` (`sudo apt install ros-dev-tools`)
-
-## Build
-
-```bash
-cd /path/to/Team-16
-source /opt/ros/jazzy/setup.bash
-colcon build --symlink-install
-```
-
-## Run
-
-In a new terminal:
-
-```bash
-cd /path/to/Team-16
-source /opt/ros/jazzy/setup.bash
-source install/setup.bash
-ros2 run team16_bringup hello
-```
-
-The `hello` node logs once a second and publishes `ready` on `/team16/status`. Stop it with Ctrl+C.
-
-Add new packages under `src/`, then build again.

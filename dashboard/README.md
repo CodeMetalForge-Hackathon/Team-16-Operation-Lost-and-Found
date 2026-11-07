@@ -8,8 +8,9 @@ Open the local address printed by the server, enter the Raspberry Pi hostname
 or IP address, and select **Connect screens**. The browser remembers the address
 locally.
 
-The dashboard displays the Pi-hosted visible-camera feed on port 8080 and
-thermal feed on port 8081. Each feed must already be running on the Pi.
+The dashboard displays the Pi-hosted fused detection view on port 8081 (visible camera cropped to the
+thermal field of view) and the thermal view on port 8082. Start them on the Pi with
+`thermal/start_fusion.sh`.
 
 When it is time to host the dashboard on the Pi, copy this directory there and
 run:

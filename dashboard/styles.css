@@ -163,7 +163,7 @@ button.primary:hover { background: #8affc4; }
   position: relative;
   display: grid;
   place-items: center;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 640 / 544;
   overflow: hidden;
   background:
     linear-gradient(rgba(89, 215, 230, 0.035) 1px, transparent 1px),
@@ -248,3 +248,10 @@ button.primary:hover { background: #8affc4; }
   .actions { width: 100%; }
   .actions button { flex: 1; }
 }
+
+.cal-status { margin: 0; padding: 9px 18px; font-size: 0.82rem; color: var(--muted); border-bottom: 1px solid var(--line); }
+.cal-status.busy { color: #ffbe00; }
+.cal-status.ok { color: var(--green); }
+.cal-status.bad { color: #ff7a6b; }
+button.calibrate { border-color: rgba(255, 190, 0, 0.55); }
+button:disabled { opacity: 0.55; cursor: progress; }

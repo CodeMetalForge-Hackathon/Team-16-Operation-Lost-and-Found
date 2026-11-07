@@ -27,29 +27,31 @@
                placeholder="Hostname or IP address" autocomplete="off" spellcheck="false">
         <button id="connect" class="primary" type="button">Connect screens</button>
       </div>
-      <p>The address stays in this browser. Both live feeds connect directly to the Pi.</p>
+      <p>The address stays in this browser. The live screens connect directly to the Pi.</p>
     </section>
 
     <section class="screen-grid" aria-label="Live sensor screens">
-      <article class="screen-card" data-screen="visible" data-port="8080">
+      <article class="screen-card" data-screen="fused" data-port="8081">
         <header class="card-header">
           <div>
-            <p class="card-kicker">VISIBLE CAMERA</p>
-            <h2>Color anomaly detector</h2>
+            <p class="card-kicker">FUSED · VISIBLE + THERMAL</p>
+            <h2>Combined human detection</h2>
           </div>
           <span class="feed-state" data-state="idle">Idle</span>
         </header>
         <div class="viewport">
-          <img alt="Live visible-camera anomaly detection feed">
+          <img alt="Live fused detection feed">
           <div class="placeholder">
             <span class="reticle" aria-hidden="true"></span>
-            <strong>Visible feed offline</strong>
-            <small>Starts when the Pi screen on port 8080 is available</small>
+            <strong>Fused feed offline</strong>
+            <small>Starts when the Pi screen on port 8081 is available</small>
           </div>
         </div>
+        <p class="cal-status" id="cal-status" role="status" aria-live="polite">Alignment: unknown until connected</p>
         <footer class="card-footer">
-          <span class="endpoint">SCREEN 01 · :8080</span>
+          <span class="endpoint">SCREEN 01 · :8081</span>
           <div class="actions">
+            <button type="button" class="calibrate" data-action="recalibrate">Recalibrate</button>
             <button type="button" data-action="retry">Retry</button>
             <button type="button" data-action="open">Open</button>
             <button type="button" data-action="fullscreen">Fullscreen</button>
@@ -57,24 +59,24 @@
         </footer>
       </article>
 
-      <article class="screen-card" data-screen="thermal" data-port="8081">
+      <article class="screen-card" data-screen="thermal" data-port="8082">
         <header class="card-header">
           <div>
             <p class="card-kicker">THERMAL CAMERA</p>
-            <h2>Thermal person detector</h2>
+            <h2>Thermal view</h2>
           </div>
           <span class="feed-state" data-state="idle">Idle</span>
         </header>
         <div class="viewport">
-          <img alt="Live thermal person detection feed">
+          <img alt="Live thermal camera feed">
           <div class="placeholder">
             <span class="heatmark" aria-hidden="true"></span>
             <strong>Thermal feed offline</strong>
-            <small>Starts when the Pi screen on port 8081 is available</small>
+            <small>Starts when the Pi screen on port 8082 is available</small>
           </div>
         </div>
         <footer class="card-footer">
-          <span class="endpoint">SCREEN 02 · :8081</span>
+          <span class="endpoint">SCREEN 02 · :8082</span>
           <div class="actions">
             <button type="button" data-action="retry">Retry</button>
             <button type="button" data-action="open">Open</button>

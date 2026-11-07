@@ -9,3 +9,7 @@ __pycache__/
 # local-only: credentials / runtime logs
 SKILL.md
 detections.jsonl
+
+# per-setup camera alignment (written by the dashboard Recalibrate button)
+thermal/fusion_calib.json
+thermal/fusion_weights.json
