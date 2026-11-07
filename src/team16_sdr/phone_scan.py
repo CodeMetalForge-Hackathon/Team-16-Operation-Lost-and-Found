@@ -47,7 +47,7 @@ def dwell(lpc, samplerate, seconds, buf_limit=32768):
     for _ in range(10):
         buf = iio.Buffer(lpc, size, cyclic=False)
         first = buf.read()
-        if np.abs(np.frombuffer(first, dtype="<i2")).max() > 0:
+        if np.abs(np.frombuffer(first, dtype="<i2")).max() > 100:
             break
         del buf
     chunks = [np.frombuffer(first, dtype="<i2")]
