@@ -8,13 +8,13 @@
    feed, a `detection` JSON line is appended to detections.jsonl, and it pings.
 
 Run on the PC (starts the camera stream on the Pi over SSH):
-    $env:PI_HOST="<pi address>" ; python color_anomaly.py
+    $env:PI_HOST="<pi address>" ; python picam_color_anomaly.py
 Run on the Pi (reads the camera directly, serves the annotated feed over HTTP):
-    python3 color_anomaly.py --source local --headless --serve 8080
+    python3 picam_color_anomaly.py --source local --headless --serve 8080
     then open http://<pi>:8080/ in a browser on the PC
 Keys (window): b relearn baseline, m toggle mask view, s save frame, q quit.
 Headless/serve control: touch ~/relearn on the Pi to relearn the baseline.
-Self-test without a camera:  python color_anomaly.py --selftest
+Self-test without a camera:  python picam_color_anomaly.py --selftest
 """
 import argparse
 import json

@@ -5,3 +5,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .vscode/
+
+# local-only: credentials / runtime logs
+SKILL.md
+detections.jsonl
