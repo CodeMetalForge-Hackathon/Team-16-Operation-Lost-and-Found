@@ -83,6 +83,9 @@ people in the Pi Cam 3 (color) and the HT-203U (gray), the RandomForest scores t
 each visible person box is checked for a hotspot inside it. Labels: HUMAN (shape + heat), UNCONFIRMED,
 NO HEAT (decoy?), THERMAL ONLY (heat, no visible person). `thermal/fusion_web.py` is a separate
 process that serves the results so the Hailo loop can never starve the web server.
+`thermal/fusion_supervisor.sh` (started by `start_fusion.sh`) is a watchdog: if the detector exits, or
+stops writing frames for 15 s (the Hailo `infer()` call has hung after about an hour), it is killed and
+restarted automatically. Restarts are logged in `fusion.log`.
 
 On the Pi (stop other feeds first; only one process can own the Hailo and the Pi camera):
 
