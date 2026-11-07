@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#08110f">
+  <title>Team 16 Sensor Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">OPERATION LOST &amp; FOUND</p>
+        <h1>Sensor Pod <span>Live View</span></h1>
+      </div>
+      <div class="system-state" aria-live="polite">
+        <span class="pulse" aria-hidden="true"></span>
+        <span id="system-status">Awaiting Pi address</span>
+      </div>
+    </header>
+
+    <section class="connection-panel" aria-label="Pi connection settings">
+      <label for="pi-host">Raspberry Pi address</label>
+      <div class="connection-controls">
+        <input id="pi-host" type="text" inputmode="url"
+               placeholder="Hostname or IP address" autocomplete="off" spellcheck="false">
+        <button id="connect" class="primary" type="button">Connect screens</button>
+      </div>
+      <p>The address stays in this browser. Both live feeds connect directly to the Pi.</p>
+    </section>
+
+    <section class="screen-grid" aria-label="Live sensor screens">
+      <article class="screen-card" data-screen="visible" data-port="8080">
+        <header class="card-header">
+          <div>
+            <p class="card-kicker">VISIBLE CAMERA</p>
+            <h2>Color anomaly detector</h2>
+          </div>
+          <span class="feed-state" data-state="idle">Idle</span>
+        </header>
+        <div class="viewport">
+          <img alt="Live visible-camera anomaly detection feed">
+          <div class="placeholder">
+            <span class="reticle" aria-hidden="true"></span>
+            <strong>Visible feed offline</strong>
+            <small>Starts when the Pi screen on port 8080 is available</small>
+          </div>
+        </div>
+        <footer class="card-footer">
+          <span class="endpoint">SCREEN 01 · :8080</span>
+          <div class="actions">
+            <button type="button" data-action="retry">Retry</button>
+            <button type="button" data-action="open">Open</button>
+            <button type="button" data-action="fullscreen">Fullscreen</button>
+          </div>
+        </footer>
+      </article>
+
+      <article class="screen-card" data-screen="thermal" data-port="8081">
+        <header class="card-header">
+          <div>
+            <p class="card-kicker">THERMAL CAMERA</p>
+            <h2>Thermal person detector</h2>
+          </div>
+          <span class="feed-state" data-state="idle">Idle</span>
+        </header>
+        <div class="viewport">
+          <img alt="Live thermal person detection feed">
+          <div class="placeholder">
+            <span class="heatmark" aria-hidden="true"></span>
+            <strong>Thermal feed offline</strong>
+            <small>Starts when the Pi screen on port 8081 is available</small>
+          </div>
+        </div>
+        <footer class="card-footer">
+          <span class="endpoint">SCREEN 02 · :8081</span>
+          <div class="actions">
+            <button type="button" data-action="retry">Retry</button>
+            <button type="button" data-action="open">Open</button>
+            <button type="button" data-action="fullscreen">Fullscreen</button>
+          </div>
+        </footer>
+      </article>
+    </section>
+
+    <footer class="page-footer">
+      <span>TEAM 16 · EDGE SENSOR CONSOLE</span>
+      <span id="clock" aria-label="Local time"></span>
+    </footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

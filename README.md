@@ -1,5 +1,15 @@
 # Team 16 ROS 2 workspace
 
+## Live sensor dashboard
+
+Start the dashboard from the repository root:
+
+    python dashboard/serve.py
+
+Open the local address printed by the server, enter the Pi hostname or IP
+address, and select **Connect screens**. The dashboard shows the visible-camera
+screen on port 8080 and the thermal screen on port 8081.
+
 Colcon workspace for ROS 2 Jazzy. Clone this repo and build it on any machine that has Jazzy Desktop installed. Build products (`build/`, `install/`, `log/`) stay local and are not committed.
 
 ## Windows thermal demo
