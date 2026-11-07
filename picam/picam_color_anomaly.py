@@ -33,7 +33,7 @@ import numpy as np
 # ---------------------------------------------------------------- parameters
 SMALL = (320, 180)      # detection runs at this size (fast on the Pi)
 S_MIN, V_MIN = 70, 60   # "chromatic" pixel gate (ignores gray/white/black)
-HB, SB, VB = 30, 8, 8   # histogram bins for H (0-179), S, V
+HB, SB, VB = 30, 8, 4   # histogram bins for H (0-179), S, V (coarse V: shade != new color)
 COMMON_P = 0.002        # a color bin is "normal" if >= this share of baseline pixels
 NV = 16                 # brightness levels for neutral (gray/white/black) pixels
 NEUTRAL_P = 0.01        # a neutral shade is "normal" if >= this share of neutral pixels
@@ -376,11 +376,14 @@ def selftest():
     """Beige office with wood + blue-ish carpet baseline, then an orange card appears."""
     rng = np.random.default_rng(1)
 
-    def scene(card, black=False):
+    def scene(card, black=False, shade=1.0):
         img = np.full((720, 1280, 3), (190, 200, 205), np.uint8)       # beige wall (BGR)
         img[400:, :] = (60, 80, 120)                                    # brownish floor
         img[100:300, 800:1100] = (150, 110, 70)                         # blueish monitor
         img = np.clip(img + rng.normal(0, 6, img.shape), 0, 255).astype(np.uint8)
+        if shade != 1.0:                                                # plant in shadow / lit
+            img[400:, :] = np.clip(img[400:, :] * shade, 0, 255).astype(np.uint8)
+            img[100:300, 800:1100] = np.clip(img[100:300, 800:1100] * (2 - shade), 0, 255).astype(np.uint8)
         if card:
             img[200:260, 300:380] = (0, 120, 255)                       # orange card (BGR)
         if black:
@@ -393,13 +396,16 @@ def selftest():
     d.base.finish()
     d.learning = False
     fp = sum(len(d.process(scene(False))[2]) for _ in range(20))
+    sh = sum(len(d.process(scene(False, shade=0.7))[2]) for _ in range(20))
+    print("false pings with shaded/lit objects:", sh)
+    d.tracker = Tracker()
     ev = [e for _ in range(10) for e in d.process(scene(True))[2]]
     print("false pings on normal scene:", fp)
     print("pings with orange card:", len(ev), ev[:1])
     d.tracker = Tracker()
     nv = [e for _ in range(10) for e in d.process(scene(False, black=True))[2]]
     print("pings with black object:", len(nv), nv[:1])
-    ok = (fp == 0 and len(ev) == 1 and ev[0]["color"] == "orange"
+    ok = (fp == 0 and sh == 0 and len(ev) == 1 and ev[0]["color"] == "orange"
           and len(nv) == 1 and nv[0]["color"] == "black")
     print("SELFTEST", "PASS" if ok else "FAIL")
     sys.exit(0 if ok else 1)
