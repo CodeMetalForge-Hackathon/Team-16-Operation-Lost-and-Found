@@ -35,12 +35,23 @@ def open_device(uri, freq, samplerate, bw, gain):
 
 
 def dwell(lpc, samplerate, seconds, buf_limit=32768):
-    """Capture `seconds` of complex IQ from cf-ad9361-lpc (I/Q int16)."""
+    """Capture `seconds` of complex IQ from cf-ad9361-lpc (I/Q int16).
+
+    The Pi5 xHCI sometimes arms the first DMA buffer dead (reads all-zero
+    forever); recreate the buffer until the first read carries signal.
+    """
     import iio
     n = int(samplerate * seconds)
-    buf = iio.Buffer(lpc, min(n, buf_limit), cyclic=False)
-    chunks = []
-    got = 0
+    size = min(n, buf_limit)
+    buf = None
+    for _ in range(10):
+        buf = iio.Buffer(lpc, size, cyclic=False)
+        first = buf.read()
+        if np.abs(np.frombuffer(first, dtype="<i2")).max() > 0:
+            break
+        del buf
+    chunks = [np.frombuffer(first, dtype="<i2")]
+    got = len(chunks[0]) // 2
     fails = 0
     while got < n:
         try:
