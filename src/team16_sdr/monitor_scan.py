@@ -21,7 +21,6 @@ import sys
 import threading
 import time
 
-MAC_RE = re.compile(r"([0-9a-f]{2}:){5}[0-9a-f]{2}", re.I)
 
 
 def emit(out, lock, rec):
@@ -59,20 +58,20 @@ def wifi_feed(out, lock, iface, stop):
         for line in proc.stdout:
             if stop.is_set():
                 break
-            if "probe request" in line:
+            low = line.lower()
+            if "probe request" in low:
                 kind = "wifi-probe"
-            elif "assoc request" in line:
+            elif "assoc request" in low:
                 kind = "wifi-assoc"
             else:
                 continue
-            src = line.split("src", 1)
-            m = MAC_RE.search(src[1]) if len(src) > 1 else MAC_RE.search(line)
+            m = re.search(r"SA:((?:[0-9a-f]{2}:){5}[0-9a-f]{2})", line, re.I)
             if not m:
                 continue
-            mac = m.group(0).lower()
-            sm = re.search(r"SSID:\"([^\"]*)\"", line)
-            ssid = sm.group(1) if sm else None
-            rm = re.search(r"(\-?\d+) dBm", line)
+            mac = m.group(1).lower()
+            sm = re.search(r"(?:Probe|Assoc) Request \(([^)]*)\)", line, re.I)
+            ssid = sm.group(1).strip() or None if sm else None
+            rm = re.search(r"(\-?\d+)\s*dBm", line)
             rssi = int(rm.group(1)) if rm else None
             now = time.time()
             key = (mac, kind)
