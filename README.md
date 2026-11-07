@@ -26,6 +26,23 @@ python scene_features.py
 python train_model.py
 ```
 
+## Thermal canopy fusion (see through foliage)
+
+`thermal/thermal_stitch.py` projects many drone frames onto a common ground grid using each
+frame's pose, then fuses them with a high percentile so the warm target stays and the canopy
+(which sits above the ground and smears across frames) is rejected. Run from `thermal/`:
+
+```powershell
+python thermal_stitch.py --demo                    # simulated drone sweep -> data/stitch_demo.png
+python thermal_stitch.py --demo --pose-noise 0.5   # see how pose error ruins it
+python thermal_stitch.py --selftest
+python thermal_stitch.py --frames-dir DIR --poses poses.csv   # real frames; CSV: file,x,y,z,yaw
+```
+
+Simulation result: pose error up to ~0.3 m is fine at 20 m altitude; 0.5 m or worse loses the
+target. A narrow flight path can fail on some canopies (target never visible), so fly wide.
+Assumes a nadir-looking camera over flat ground; HFOV defaults to 50 deg (`--hfov`).
+
 ## Pi Camera 3 color detector
 
 Scripts live in `picam/`. Run from the repository root:
