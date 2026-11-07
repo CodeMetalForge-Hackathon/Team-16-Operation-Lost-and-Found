@@ -1,0 +1,75 @@
+image_path,session_id,scene_id,subject_type,occlusion_level,view_id,image_type,timestamp
+data\images\41f70a7f_124109_720005.png,41f70a7f,Conference 01,empty,none,1,original,2026-11-07T12:41:09.720005
+data\images\41f70a7f_124145_801682.png,41f70a7f,Conference 01,nonhuman,none,1,original,2026-11-07T12:41:45.801682
+data\images\41f70a7f_124157_440939.png,41f70a7f,Conference 01,nonhuman,none,1,original,2026-11-07T12:41:57.440939
+data\images\41f70a7f_124206_961061.png,41f70a7f,Conference 01,nonhuman,none,1,original,2026-11-07T12:42:06.961061
+data\images\41f70a7f_124228_321199.png,41f70a7f,Conference 01,human,none,1,original,2026-11-07T12:42:28.321199
+data\images\41f70a7f_124235_040735.png,41f70a7f,Conference 01,human,none,1,original,2026-11-07T12:42:35.040735
+data\images\41f70a7f_124248_322462.png,41f70a7f,Conference 01,human,none,1,original,2026-11-07T12:42:48.322462
+data\images\41f70a7f_124306_522938.png,41f70a7f,Conference 01,human,partial,1,original,2026-11-07T12:43:06.522938
+data\images\41f70a7f_124336_522068.png,41f70a7f,Conference 01,human,heavy,1,original,2026-11-07T12:43:36.522068
+data\images\41f70a7f_124348_802727.png,41f70a7f,Conference 01,empty,heavy,1,original,2026-11-07T12:43:48.802727
+data\images\41f70a7f_124354_562545.png,41f70a7f,Conference 01,empty,none,1,original,2026-11-07T12:43:54.562545
+data\images\41f70a7f_124357_762671.png,41f70a7f,Conference 01,empty,none,1,original,2026-11-07T12:43:57.762671
+data\images\41f70a7f_124513_443601.png,41f70a7f,Conference 01,nonhuman,none,1,original,2026-11-07T12:45:13.443601
+data\images\41f70a7f_124515_602268.png,41f70a7f,Conference 01,nonhuman,none,1,original,2026-11-07T12:45:15.602268
+data\images\41f70a7f_124522_723915.png,41f70a7f,Conference 01,nonhuman,none,1,original,2026-11-07T12:45:22.723915
+data\images\41f70a7f_124548_885514.png,41f70a7f,Conference 01,human,heavy,1,original,2026-11-07T12:45:48.885514
+data\images\41f70a7f_124553_644479.png,41f70a7f,Conference 01,human,partial,1,original,2026-11-07T12:45:53.644479
+data\images\41f70a7f_124559_204576.png,41f70a7f,Conference 01,human,heavy,1,original,2026-11-07T12:45:59.204576
+data\images\41f70a7f_124610_045019.png,41f70a7f,Conference 01,human,partial,1,original,2026-11-07T12:46:10.045019
+data\images\41f70a7f_124654_445588.png,41f70a7f,Conference 01,human,partial,1,original,2026-11-07T12:46:54.445588
+data\images\41f70a7f_124704_405732.png,41f70a7f,Conference 01,human,heavy,1,original,2026-11-07T12:47:04.405732
+data\images\41f70a7f_124712_166285.png,41f70a7f,Conference 01,human,heavy,1,original,2026-11-07T12:47:12.166285
+data\images\41f70a7f_124718_526388.png,41f70a7f,Conference 01,empty,heavy,1,original,2026-11-07T12:47:18.526388
+data\images\41f70a7f_124720_645256.png,41f70a7f,Conference 01,empty,heavy,1,original,2026-11-07T12:47:20.645256
+data\images\41f70a7f_124750_166938.png,41f70a7f,Conference 01,nonhuman,heavy,1,original,2026-11-07T12:47:50.166938
+data\images\41f70a7f_124751_446026.png,41f70a7f,Conference 01,nonhuman,heavy,1,original,2026-11-07T12:47:51.446026
+data\images\41f70a7f_124816_647477.png,41f70a7f,Conference 01,nonhuman,heavy,1,original,2026-11-07T12:48:16.647477
+data\images\41f70a7f_124818_326515.png,41f70a7f,Conference 01,nonhuman,heavy,1,original,2026-11-07T12:48:18.326515
+data\images\41f70a7f_124822_448973.png,41f70a7f,Conference 01,nonhuman,heavy,1,original,2026-11-07T12:48:22.448973
+data\images\cfddb7da_125136_031591.png,cfddb7da,hallway01,empty,none,1,original,2026-11-07T12:51:36.031591
+data\images\cfddb7da_125137_749372.png,cfddb7da,hallway01,empty,none,1,original,2026-11-07T12:51:37.749372
+data\images\cfddb7da_125138_677385.png,cfddb7da,hallway01,empty,none,1,original,2026-11-07T12:51:38.677385
+data\images\cfddb7da_125200_752897.png,cfddb7da,hallway01,human,partial,1,original,2026-11-07T12:52:00.752897
+data\images\cfddb7da_125208_674155.png,cfddb7da,hallway01,human,partial,1,original,2026-11-07T12:52:08.674155
+data\images\cfddb7da_125217_991752.png,cfddb7da,hallway01,human,partial,1,original,2026-11-07T12:52:17.991752
+data\images\cfddb7da_125228_274383.png,cfddb7da,hallway01,human,heavy,1,original,2026-11-07T12:52:28.274383
+data\images\cfddb7da_125232_111446.png,cfddb7da,hallway01,human,heavy,1,original,2026-11-07T12:52:32.111446
+data\images\cfddb7da_125234_437197.png,cfddb7da,hallway01,human,heavy,1,original,2026-11-07T12:52:34.437197
+data\images\cfddb7da_125253_112321.png,cfddb7da,hallway01,nonhuman,none,1,original,2026-11-07T12:52:53.112321
+data\images\cfddb7da_125253_635513.png,cfddb7da,hallway01,nonhuman,none,1,original,2026-11-07T12:52:53.635513
+data\images\cfddb7da_125314_592701.png,cfddb7da,hallway01,nonhuman,none,1,original,2026-11-07T12:53:14.592701
+data\images\cfddb7da_125337_075700.png,cfddb7da,hallway01,nonhuman,partial,1,original,2026-11-07T12:53:37.075700
+data\images\cfddb7da_125337_712265.png,cfddb7da,hallway01,nonhuman,partial,1,original,2026-11-07T12:53:37.712265
+data\images\cfddb7da_125349_313969.png,cfddb7da,hallway01,nonhuman,partial,1,original,2026-11-07T12:53:49.313969
+data\images\cfddb7da_125354_114616.png,cfddb7da,hallway01,nonhuman,partial,1,original,2026-11-07T12:53:54.114616
+data\images\cfddb7da_125406_433410.png,cfddb7da,hallway01,nonhuman,heavy,1,original,2026-11-07T12:54:06.433410
+data\images\cfddb7da_125424_155344.png,cfddb7da,hallway01,nonhuman,none,1,original,2026-11-07T12:54:24.155344
+data\images\cfddb7da_125424_354945.png,cfddb7da,hallway01,nonhuman,none,1,original,2026-11-07T12:54:24.354945
+data\images\cfddb7da_125424_713724.png,cfddb7da,hallway01,nonhuman,none,1,original,2026-11-07T12:54:24.713724
+data\images\cfddb7da_125436_634092.png,cfddb7da,hallway01,nonhuman,partial,1,original,2026-11-07T12:54:36.634092
+data\images\cfddb7da_125436_994338.png,cfddb7da,hallway01,nonhuman,partial,1,original,2026-11-07T12:54:36.994338
+data\images\cfddb7da_125437_193856.png,cfddb7da,hallway01,nonhuman,partial,1,original,2026-11-07T12:54:37.193856
+data\images\cfddb7da_125437_393980.png,cfddb7da,hallway01,nonhuman,partial,1,original,2026-11-07T12:54:37.393980
+data\images\cfddb7da_125447_915374.png,cfddb7da,hallway01,nonhuman,partial,1,original,2026-11-07T12:54:47.915374
+data\images\cfddb7da_125448_152782.png,cfddb7da,hallway01,nonhuman,partial,1,original,2026-11-07T12:54:48.152782
+data\images\67c153d2_125625_829957.png,67c153d2,desks01,human,heavy,1,original,2026-11-07T12:56:25.829957
+data\images\67c153d2_125628_710460.png,67c153d2,desks01,human,heavy,1,original,2026-11-07T12:56:28.710460
+data\images\67c153d2_125638_470826.png,67c153d2,desks01,nonhuman,none,1,original,2026-11-07T12:56:38.470826
+data\images\67c153d2_125642_468920.png,67c153d2,desks01,nonhuman,none,1,original,2026-11-07T12:56:42.468920
+data\images\67c153d2_125656_071452.png,67c153d2,desks01,human,partial,1,original,2026-11-07T12:56:56.071452
+data\images\67c153d2_125701_190716.png,67c153d2,desks01,human,partial,1,original,2026-11-07T12:57:01.190716
+data\images\67c153d2_125707_870170.png,67c153d2,desks01,human,heavy,1,original,2026-11-07T12:57:07.870170
+data\images\67c153d2_125708_273076.png,67c153d2,desks01,human,heavy,1,original,2026-11-07T12:57:08.273076
+data\images\67c153d2_125718_430934.png,67c153d2,desks01,human,heavy,1,original,2026-11-07T12:57:18.430934
+data\images\67c153d2_125719_270526.png,67c153d2,desks01,human,heavy,1,original,2026-11-07T12:57:19.270526
+data\images\67c153d2_125720_069613.png,67c153d2,desks01,human,heavy,1,original,2026-11-07T12:57:20.069613
+data\images\67c153d2_125734_711341.png,67c153d2,desks01,nonhuman,none,1,original,2026-11-07T12:57:34.711341
+data\images\67c153d2_125735_632382.png,67c153d2,desks01,nonhuman,none,1,original,2026-11-07T12:57:35.632382
+data\images\67c153d2_125735_791264.png,67c153d2,desks01,nonhuman,none,1,original,2026-11-07T12:57:35.791264
+data\images\67c153d2_125737_989907.png,67c153d2,desks01,nonhuman,none,1,original,2026-11-07T12:57:37.989907
+data\images\67c153d2_125738_190171.png,67c153d2,desks01,nonhuman,none,1,original,2026-11-07T12:57:38.190171
+data\images\67c153d2_125745_432012.png,67c153d2,desks01,nonhuman,none,1,original,2026-11-07T12:57:45.432012
+data\images\67c153d2_125745_791437.png,67c153d2,desks01,nonhuman,none,1,original,2026-11-07T12:57:45.791437
+data\images\67c153d2_125746_191994.png,67c153d2,desks01,nonhuman,none,1,original,2026-11-07T12:57:46.191994
