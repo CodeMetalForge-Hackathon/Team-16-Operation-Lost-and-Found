@@ -34,7 +34,7 @@ class RecentPeak:
     operator can hold the antenna still for a moment and still catch one packet.
     """
 
-    def __init__(self, window_s: float = 0.6) -> None:
+    def __init__(self, window_s: float = 1.4) -> None:
         self.window_s = window_s
         self._hist: deque[tuple[float, float]] = deque()
 

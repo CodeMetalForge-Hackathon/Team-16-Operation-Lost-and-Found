@@ -12,7 +12,11 @@ from dataclasses import dataclass
 import numpy as np
 
 SAMPLE_RATE = 2_048_000
-DWELL_S = 0.16
+# The beacon sends one packet a second. Dwell long enough to catch it,
+# and hold the peak past the gap so a mark still sees that packet.
+DWELL_S = 1.15
+LISTEN_S = 1.25
+BURST_HOLD_S = 1.4
 TARGET_HZ = 915_000_000
 # Keep the signal off the RTL-SDR's DC spur.
 TUNE_OFFSET = 250_000
@@ -92,13 +96,21 @@ def dechirp_score(iq: np.ndarray, fs: float, bw: float, sf: int) -> float:
     return best
 
 
-def best_dechirp(iq: np.ndarray, fs: float) -> tuple[int, float, float]:
-    winner = (7, 125_000.0, 0.0)
-    for bw in BANDWIDTHS:
+def best_dechirp(
+    iq: np.ndarray, fs: float, measured_hz: float | None = None
+) -> tuple[int, float, float]:
+    bandwidths = BANDWIDTHS
+    if measured_hz is not None:
+        ordered = sorted(BANDWIDTHS, key=lambda bw: abs(bw - measured_hz))
+        bandwidths = [ordered[0]]
+        if abs(ordered[1] - measured_hz) <= abs(ordered[0] - measured_hz) * 1.5 + 20_000:
+            bandwidths.append(ordered[1])
+    winner = (7, float(bandwidths[0]), 0.0)
+    for bw in bandwidths:
         for sf in SPREAD_FACTORS:
             score = dechirp_score(iq, fs, bw, sf)
             if score > winner[2]:
-                winner = (sf, bw, score)
+                winner = (sf, float(bw), score)
     return winner
 
 
@@ -173,15 +185,53 @@ def _matching_blob(blobs: list[Blob], bw: float) -> Blob | None:
     return min(wide, key=lambda blob: abs(blob.width_hz - bw))
 
 
+def loudest_slice(iq: np.ndarray, fs: float, span_s: float = 0.4) -> np.ndarray:
+    """Capture from the start of the loud packet.
+
+    The chirp check only looks at the beginning of what it is given, so this
+    slice has to start on the packet, not on the quiet gap in front of it.
+    """
+    chunk_s = 0.008
+    chunk = max(256, int(fs * chunk_s))
+    n = len(iq) // chunk
+    span = max(3, int(round(span_s / chunk_s)))
+    if n < span:
+        return iq
+    power = np.mean(np.abs(iq[: n * chunk].reshape(n, chunk)) ** 2, axis=1)
+    peak = int(np.argmax(power))
+    floor = float(power[peak]) / (10 ** 0.6)  # within 6 dB of the peak
+    onset = peak
+    while onset > 0 and power[onset - 1] >= floor:
+        onset -= 1
+    start = max(0, onset - 1)
+    stop = min(n, start + span)
+    return iq[start * chunk : stop * chunk]
+
+
+def burst_excess_db(iq: np.ndarray, fs: float) -> tuple[float, float]:
+    """When the loudest 8 ms chunk happened, and how far it sits above the median."""
+    chunk_s = 0.008
+    chunk = max(256, int(fs * chunk_s))
+    n = len(iq) // chunk
+    if n < 2:
+        return 0.0, 0.0
+    power = np.mean(np.abs(iq[: n * chunk].reshape(n, chunk)) ** 2, axis=1)
+    db = 10.0 * np.log10(power + 1e-20)
+    peak = int(np.argmax(db))
+    return peak * chunk_s, float(db[peak] - np.median(db))
+
+
 def analyze(iq: np.ndarray, fs: float, center_hz: float) -> Hit | None:
-    blobs = find_blobs(iq, fs)
+    view = loudest_slice(iq, fs)
+    blobs = find_blobs(view, fs)
     if not blobs:
         return None
-    wide = [blob for blob in blobs if blob.width_hz >= 60_000.0]
+    wide = [blob for blob in blobs if blob.width_hz >= 40_000.0]
     if not wide:
         blob = blobs[0]
         return Hit(float(center_hz) + blob.offset_hz, blob.width_hz, None, blob.power_dbfs, 0.0, "tone")
-    sf, bw, score = best_dechirp(iq, fs)
+    measured = max(blob.width_hz for blob in wide)
+    sf, bw, score = best_dechirp(view, fs, measured)
     blob = _matching_blob(wide, bw)
     if blob is None:
         return None
@@ -238,6 +288,22 @@ def channel_power_dbfs(
     power = float(10.0 * np.log10(float(np.sum(used)) + 1e-20))
     db = 10.0 * np.log10(ps + 1e-20)
     return power, db
+
+
+def peak_channel_power_dbfs(
+    iq: np.ndarray, fs: float, bw_hz: float, offset_hz: float = 0.0, block: int = 8192
+) -> float:
+    """Loudest short block. A one-second listen is mostly the gap between packets."""
+    if len(iq) < 256:
+        power, _ = channel_power_dbfs(iq, fs, bw_hz, offset_hz)
+        return power
+    block = min(block, len(iq))
+    best = -200.0
+    for start in range(0, len(iq) - block + 1, block):
+        power, _ = channel_power_dbfs(iq[start : start + block], fs, bw_hz, offset_hz)
+        if power > best:
+            best = power
+    return best
 
 
 def survey(radio, band: tuple[int, int], stop=None, status=None) -> Hit | None:

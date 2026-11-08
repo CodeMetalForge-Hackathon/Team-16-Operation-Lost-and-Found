@@ -19,7 +19,18 @@ import numpy as np
 import tkinter as tk
 
 from .bearing import Bearing, RecentPeak, add_sample, bearing_report
-from .lora import SAMPLE_RATE, TARGET_HZ, TUNE_OFFSET, US915, channel_power_dbfs, describe, survey
+from .lora import (
+    BURST_HOLD_S,
+    LISTEN_S,
+    SAMPLE_RATE,
+    TARGET_HZ,
+    TUNE_OFFSET,
+    US915,
+    channel_power_dbfs,
+    describe,
+    peak_channel_power_dbfs,
+    survey,
+)
 from .radio import DemoRadio, RadioError, RtlRadio
 
 BG = "#1b1e24"
@@ -58,7 +69,7 @@ class Engine(threading.Thread):
         self.hit = None
         self.bw = 200_000.0
         self.offset_hz = float(TUNE_OFFSET)
-        self.recent = RecentPeak(0.6)
+        self.recent = RecentPeak(BURST_HOLD_S)
         self.frame = 0
 
     def publish(self, **fields) -> None:
@@ -100,21 +111,21 @@ class Engine(threading.Thread):
         self.radio.set_center_freq(int(hz) - TUNE_OFFSET)
 
     def _confirm_target(self) -> None:
-        """The beacon is a steady 915 MHz signal. Confirm it, and back off if it clips."""
-        self.publish(status="Checking 915.000 MHz", searching=True)
+        """The beacon packets once a second. Listen long enough to catch one."""
+        self.publish(status="Waiting for a 915 MHz burst", searching=True)
         self._tune(TARGET_HZ)
         iq = None
-        for _ in range(6):
+        for _ in range(4):
             if self.stop.is_set():
                 return
             if self.radio.needs_settle:
                 time.sleep(0.02)
                 self.radio.read(8192)
-            iq = self.radio.read(int(SAMPLE_RATE * 0.2))
-            if self.radio.last_rail > 0.005 and self.radio.gain_index > 0:
+            iq = self.radio.read(int(self.radio.sample_rate * LISTEN_S))
+            if self.radio.last_rail > 0.002 and self.radio.gain_index > 0:
                 self.radio.bump_gain(-2)
                 continue
-            power, _ = channel_power_dbfs(iq, self.radio.sample_rate, 500_000.0, TUNE_OFFSET)
+            power = peak_channel_power_dbfs(iq, self.radio.sample_rate, 500_000.0, TUNE_OFFSET)
             if power < -55.0 and self.radio.gain_index < len(self.radio.gains) - 1:
                 self.radio.bump_gain(2)
                 continue
@@ -265,7 +276,8 @@ class App(tk.Tk):
         self.f_hi.pack(side="right")
         tk.Label(
             left,
-            text="Aim the antenna. Pause a second. Mark the heading it points.",
+            text="The beacon bursts once a second. Aim, wait for the number to jump, then mark that heading.",
+            wraplength=640,
             bg=BG,
             fg=DIM,
             font=("Segoe UI", 11),
@@ -299,7 +311,7 @@ class App(tk.Tk):
         right.pack(side="right", fill="y", padx=(16, 0))
         self.power_label = tk.Label(right, text="--", bg=BG, fg=ACCENT, font=("Segoe UI", 28, "bold"))
         self.power_label.pack(anchor="e")
-        tk.Label(right, text="0.6 s peak dBFS", bg=BG, fg=DIM, font=("Segoe UI", 10)).pack(anchor="e")
+        tk.Label(right, text="last burst dBFS", bg=BG, fg=DIM, font=("Segoe UI", 10)).pack(anchor="e")
         self.now_label = tk.Label(right, text="", bg=BG, fg=FG, font=("Segoe UI", 11))
         self.now_label.pack(anchor="e", pady=(2, 8))
         self.meter = tk.Canvas(right, width=220, height=18, bg=PANEL, highlightthickness=0)
@@ -486,17 +498,18 @@ def run_check() -> int:
         if radio.needs_settle:
             time.sleep(0.05)
             radio.read(8192)
-        iq = radio.read(int(SAMPLE_RATE * 0.25))
-        while radio.last_rail > 0.005 and radio.gain_index > 0:
+        iq = radio.read(int(SAMPLE_RATE * LISTEN_S))
+        while radio.last_rail > 0.002 and radio.gain_index > 0:
             radio.bump_gain(-2)
             radio.read(8192)
-            iq = radio.read(int(SAMPLE_RATE * 0.25))
-        power, _ = channel_power_dbfs(iq, radio.sample_rate, 500_000.0, TUNE_OFFSET)
-        mag = float(np.mean(np.abs(iq)))
+            iq = radio.read(int(SAMPLE_RATE * LISTEN_S))
+        power = peak_channel_power_dbfs(iq, radio.sample_rate, 500_000.0, TUNE_OFFSET)
+        from .lora import analyze, burst_excess_db
+
+        when_s, excess_db = burst_excess_db(iq, radio.sample_rate)
         print(f"device: {radio.name}")
         print(f"tune: {radio.center} Hz  signal: {TARGET_HZ} Hz  gain: {radio.gain_db:.1f} dB  rail: {radio.last_rail:.4f}")
-        print(f"mean magnitude: {mag:.4f}   915 power: {power:.1f} dBFS")
-        from .lora import analyze
+        print(f"burst at {when_s:.3f} s in the listen, {excess_db:.1f} dB above the gap, peak {power:.1f} dBFS")
 
         hit = analyze(iq, radio.sample_rate, radio.center)
         print(describe(hit))

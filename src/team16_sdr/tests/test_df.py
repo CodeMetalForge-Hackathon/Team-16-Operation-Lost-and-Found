@@ -11,6 +11,7 @@ from df.lora import (
     CONFIRM_SCORE,
     SAMPLE_RATE,
     US915,
+    analyze,
     best_dechirp,
     dechirp_score,
     hop_centers,
@@ -34,6 +35,12 @@ class BearingTests(unittest.TestCase):
         peak = RecentPeak(0.6)
         peak.push(0.5, -12.0)
         self.assertAlmostEqual(peak.push(1.0, -28.0), -12.0)
+
+    def test_one_hertz_packet_stays_up_across_the_gap(self):
+        peak = RecentPeak(1.4)
+        peak.push(0.02, -12.0)
+        self.assertAlmostEqual(peak.push(1.1, -40.0), -12.0)
+        self.assertAlmostEqual(peak.push(1.5, -40.0), -40.0)
 
     def test_flat_powers_have_no_bearing(self):
         samples = [(0.0, -20.0), (90.0, -20.2), (180.0, -19.8)]
@@ -82,6 +89,18 @@ class LoraTests(unittest.TestCase):
         self.assertLess(tone_score, CONFIRM_SCORE, f"tone {tone_score}")
         self.assertLess(noise_score, CONFIRM_SCORE, f"noise {noise_score}")
         self.assertGreater(lora_score, tone_score * 3)
+
+    def test_packet_late_in_the_listen_is_still_lora(self):
+        n = int(SAMPLE_RATE * 1.1)
+        iq = _noise(n, 0.03, 5)
+        burst_n = int(SAMPLE_RATE * 0.1)
+        start = int(SAMPLE_RATE * 0.78)
+        iq[start : start + burst_n] += synthesize(burst_n, SAMPLE_RATE, 125_000, 10, 0.35, 20_000)
+        hit = analyze(iq, SAMPLE_RATE, 915_000_000)
+        self.assertIsNotNone(hit)
+        self.assertEqual(hit.kind, "lora")
+        self.assertEqual(hit.sf, 10)
+        self.assertEqual(hit.bw_hz, 125_000)
 
     def test_survey_locks_915(self):
         class Scripted:
