@@ -311,3 +311,4 @@ button:disabled { opacity: 0.55; cursor: progress; }
 .ins-check { display: flex; align-items: center; gap: 10px; padding: 0 16px 12px; color: #b8c8c2; font-size: 0.85rem; flex-wrap: wrap; }
 .ins-check input { flex: none; width: 18px; height: 18px; accent-color: var(--green); }
 .ins-check small { color: #71847d; font-size: 0.75rem; }
+#c-map { height: 460px !important; }

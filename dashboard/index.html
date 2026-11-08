@@ -168,6 +168,32 @@
       </footer>
     </section>
 
+    <section class="ins-card" id="map-card" aria-label="Lidar room map and position">
+      <header class="card-header">
+        <div>
+          <p class="card-kicker">LIDAR · ROOM MAP</p>
+          <h2>Where we are in the room</h2>
+        </div>
+        <span class="feed-state" id="map-state" data-state="idle">Idle</span>
+      </header>
+      <div class="tiles ins-tiles">
+        <div class="tile"><span class="tile-label">Lidar lock</span><strong id="m-lock">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Position x / y (m)</span><strong id="m-xy">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Height z</span><strong id="m-z">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Heading (clockwise)</span><strong id="m-hdg">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Distance walked</span><strong id="m-dist">&mdash;</strong></div>
+      </div>
+      <figure class="ins-plot">
+        <figcaption>Top-down map, lidar positions only <small>(green = first fix, red = now, +X right, +Y up; origin = first cloud of the saved map)</small></figcaption>
+        <canvas id="c-map" role="img" aria-label="Lidar room map with position track"></canvas>
+      </figure>
+      <p class="cal-status" id="map-note" role="status" aria-live="polite">Map feed: unknown until connected</p>
+      <footer class="card-footer">
+        <span class="endpoint">MAP FEED · :8086 (lidar laptop posts here)</span>
+        <div class="actions"><button type="button" id="map-clear">Clear track</button><button type="button" id="map-retry">Retry</button></div>
+      </footer>
+    </section>
+
     <section class="ins-card" id="ins-card" aria-label="Drone position, dead reckoning">
       <header class="card-header">
         <div>

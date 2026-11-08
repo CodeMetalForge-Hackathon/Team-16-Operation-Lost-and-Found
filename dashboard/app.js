@@ -82,6 +82,7 @@ function connectAll() {
   watchFeeds(host);
   pollBeacon(host);
   pollSdr(host);
+  pollMap(host);
   pollIns();
 }
 
@@ -623,6 +624,128 @@ insEls.modes.addEventListener("click", async (event) => {
 });
 
 const queryHost = new URLSearchParams(location.search).get("host");
+// ---- Lidar room map (:8086, posted by the lidar laptop). Lidar positions + map only, no fusion with the INS.
+const mapEls = {
+  state: document.querySelector("#map-state"), note: document.querySelector("#map-note"),
+  lock: document.querySelector("#m-lock"), xy: document.querySelector("#m-xy"), z: document.querySelector("#m-z"),
+  hdg: document.querySelector("#m-hdg"), dist: document.querySelector("#m-dist"),
+  canvas: document.querySelector("#c-map"), retry: document.querySelector("#map-retry"), clear: document.querySelector("#map-clear"),
+};
+let mapTimer = null, mapFails = 0, mapDoc = null, mapTrail = [], mapDist = 0, mapLast = null;
+
+function readPose(p) {
+  if (!p) return null;
+  let x, y, z, yawCw = null;
+  if (Array.isArray(p)) { [x, y, z] = p; if (p.length > 3) yawCw = -p[3]; }
+  else {
+    x = p.x_m ?? p.x; y = p.y_m ?? p.y; z = p.z_m ?? p.z ?? 0;
+    if (p.yaw_cw_deg != null) yawCw = p.yaw_cw_deg;
+    else if (p.heading_cw_deg != null) yawCw = p.heading_cw_deg;
+    else if (p.yaw_deg != null) yawCw = -p.yaw_deg;   // yaw is counter-clockwise in the lidar stack
+    else if (p.yaw != null) yawCw = -p.yaw;
+  }
+  x = Number(x); y = Number(y); z = Number(z);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return { x, y, z: Number.isFinite(z) ? z : 0, yawCw: yawCw == null ? null : Number(yawCw) };
+}
+
+function drawMap() {
+  const canvas = mapEls.canvas, d = mapDoc;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) return;
+  canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  const g = canvas.getContext("2d");
+  g.scale(dpr, dpr);
+  g.clearRect(0, 0, w, h);
+  if (!d || !d.width || !d.height) {
+    g.fillStyle = cssVar("--muted"); g.font = "13px ui-monospace, monospace";
+    g.fillText("Waiting for the lidar laptop to post a map…", 16, 28);
+    return;
+  }
+  const mpp = d.meters_per_pixel || 0.1, ox = d.origin?.px ?? 0, oy = d.origin?.py ?? 0;
+  const cur0 = readPose(d.pose);
+  // view = the map grid plus anywhere the track has been, so the position never falls off the plot
+  let x0 = -ox * mpp, x1 = (d.width - ox) * mpp, y0 = (oy - d.height) * mpp, y1 = oy * mpp;
+  for (const p of cur0 ? [...mapTrail, cur0] : mapTrail) { x0 = Math.min(x0, p.x - 0.5); x1 = Math.max(x1, p.x + 0.5); y0 = Math.min(y0, p.y - 0.5); y1 = Math.max(y1, p.y + 0.5); }
+  const pad = 14, scale = Math.min((w - 2 * pad) / (x1 - x0), (h - 2 * pad) / (y1 - y0));   // px per metre
+  const left = (w - (x1 - x0) * scale) / 2, top = (h - (y1 - y0) * scale) / 2;
+  const mx = (xm) => left + (xm - x0) * scale, my = (ym) => top + (y1 - ym) * scale;
+  const cell = mpp * scale;
+  g.strokeStyle = "rgba(148,180,169,0.2)"; g.strokeRect(left, top, (x1 - x0) * scale, (y1 - y0) * scale);
+  g.strokeStyle = "rgba(148,180,169,0.12)"; g.fillStyle = cssVar("--muted"); g.font = "10px ui-monospace, monospace";
+  for (let e = Math.ceil(x0); e <= x1; e++) { g.beginPath(); g.moveTo(mx(e), top); g.lineTo(mx(e), top + (y1 - y0) * scale); g.stroke(); }
+  for (let n = Math.ceil(y0); n <= y1; n++) { g.beginPath(); g.moveTo(left, my(n)); g.lineTo(left + (x1 - x0) * scale, my(n)); g.stroke(); }
+  g.fillText("1 m grid", left + 4, top + (y1 - y0) * scale - 4);
+  g.fillStyle = "rgba(237,247,243,0.85)";
+  for (const [col, row] of d.outline || []) {
+    const xm = (col - ox) * mpp, ym = (oy - row) * mpp;   // cell's lower-left corner, metres
+    g.fillRect(mx(xm), my(ym) - cell, Math.max(1.5, cell), Math.max(1.5, cell));
+  }
+  g.fillStyle = cssVar("--green"); g.beginPath(); g.arc(mx(0), my(0), 4, 0, 6.3); g.fill();   // map origin
+  g.strokeStyle = cssVar("--cyan"); g.lineWidth = 2; g.beginPath();
+  mapTrail.forEach((p, i) => (i ? g.lineTo(mx(p.x), my(p.y)) : g.moveTo(mx(p.x), my(p.y))));
+  g.stroke();
+  const cur = readPose(d.pose);
+  if (cur) {
+    const X = mx(cur.x), Y = my(cur.y);
+    if (cur.yawCw != null) {   // heading is clockwise from +X (map right); canvas Y points down so clockwise is positive
+      const a = (cur.yawCw * Math.PI) / 180, len = 16;
+      g.strokeStyle = cssVar("--red"); g.lineWidth = 2.5; g.beginPath();
+      g.moveTo(X, Y); g.lineTo(X + Math.cos(a) * len, Y + Math.sin(a) * len); g.stroke();
+    }
+    g.fillStyle = cssVar("--red"); g.beginPath(); g.arc(X, Y, 6, 0, 6.3); g.fill();
+  }
+}
+
+function renderMap(d) {
+  mapDoc = d;
+  const cur = d.locked === false ? null : readPose(d.pose);
+  if (cur) {
+    if (mapLast) {
+      const step = Math.hypot(cur.x - mapLast.x, cur.y - mapLast.y);
+      if (step > 0.03) { mapDist += step; mapTrail.push(cur); mapLast = cur; }
+    } else { mapTrail.push(cur); mapLast = cur; }
+    if (mapTrail.length > 3000) mapTrail.shift();
+  }
+  mapEls.state.dataset.state = "live";
+  mapEls.state.textContent = cur ? "Locked" : "No lock";
+  mapEls.lock.textContent = cur ? "LOCKED" : "no lock";
+  mapEls.xy.textContent = cur ? cur.x.toFixed(2) + " / " + cur.y.toFixed(2) : "—";
+  mapEls.z.textContent = cur ? cur.z.toFixed(2) + " m" : "—";
+  mapEls.hdg.textContent = cur && cur.yawCw != null ? (((cur.yawCw % 360) + 360) % 360).toFixed(0) + "°" : "—";
+  mapEls.dist.textContent = mapDist.toFixed(1) + " m";
+  const cells = (d.outline || []).length;
+  mapEls.note.className = "cal-status" + (cur ? "" : " bad");
+  mapEls.note.textContent = cur
+    ? "Lidar position holding. Map: " + cells + " occupied cells at " + ((d.meters_per_pixel || 0.1) * 100).toFixed(0) + " cm."
+    : (cells ? "Map loaded (" + cells + " cells) but the lidar has no position lock yet. The track continues when it locks."
+             : "Feed is up but no map has been posted yet by the lidar laptop.");
+  drawMap();
+}
+
+async function pollMap(host) {
+  clearTimeout(mapTimer);
+  try {
+    const response = await fetch("http://" + host + ":8086/map", { cache: "no-store" });
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    mapFails = 0;
+    renderMap(await response.json());
+  } catch {
+    mapFails += 1;
+    mapEls.state.dataset.state = mapFails > 2 ? "error" : "connecting";
+    mapEls.state.textContent = mapFails > 2 ? "Not connected" : "Connecting";
+    mapEls.note.className = "cal-status bad";
+    mapEls.note.textContent = "Map feed not reachable at " + host + ":8086 (map_feed.py on the Pi).";
+  }
+  if (normalizeHost(hostInput.value) === host) mapTimer = setTimeout(() => pollMap(host), 500);
+}
+
+mapEls.retry.addEventListener("click", () => { const h = normalizeHost(hostInput.value); if (h) pollMap(h); });
+mapEls.clear.addEventListener("click", () => { mapTrail = []; mapDist = 0; mapLast = null; drawMap(); });
+window.addEventListener("resize", () => { if (mapDoc) drawMap(); });
+
+
 const savedHost = localStorage.getItem(storageKey);
 const pageHost = ["127.0.0.1", "localhost"].includes(location.hostname)
   ? ""
