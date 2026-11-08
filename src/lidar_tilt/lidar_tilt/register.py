@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+from scipy.ndimage import distance_transform_edt
 from scipy.spatial import cKDTree
 
 HIT_ODDS = 0.85
@@ -264,6 +265,176 @@ def _sample(points: np.ndarray, limit: int) -> np.ndarray:
         return points
     choice = np.linspace(0, points.shape[0] - 1, limit).astype(np.int64)
     return points[choice]
+
+
+def _voxel_centers(points: np.ndarray, voxel: float) -> np.ndarray:
+    points = np.asarray(points, dtype=np.float64).reshape(-1, 3)
+    if points.shape[0] == 0:
+        return points
+    idx = np.floor(points / voxel).astype(np.int64)
+    view = np.ascontiguousarray(idx).view(np.dtype((np.void, idx.dtype.itemsize * 3)))
+    _, keep = np.unique(view, return_index=True)
+    return points[keep]
+
+
+def _wall_points(points: np.ndarray, radius_m: float = 1.0) -> np.ndarray:
+    """Drop the nearby floor. It stays close after a turn and hides the shift."""
+    points = np.asarray(points, dtype=np.float64).reshape(-1, 3)
+    if points.shape[0] == 0:
+        return points
+    walls = points[np.hypot(points[:, 0], points[:, 1]) > radius_m]
+    if walls.shape[0] >= 80:
+        return walls
+    return points
+
+
+
+def _pull_in(index: MapIndex, dense: np.ndarray, seeds: list[Pose]) -> tuple[Pose, float, float, int]:
+    best_pose = Pose()
+    best_fraction = -1.0
+    best_rms = 1.0e9
+    best_count = 0
+    for seed in seeds:
+        wide, _, _, _ = icp(index, dense, seed, gate=0.6, iterations=8)
+        pose, fraction, rms, count = icp(index, dense, wide, gate=0.15, iterations=10)
+        if fraction > best_fraction or (abs(fraction - best_fraction) < 1.0e-6 and rms < best_rms):
+            best_pose, best_fraction, best_rms, best_count = pose, fraction, rms, count
+    return best_pose, best_fraction, best_rms, best_count
+
+
+
+class WallField:
+    """Sensor-height walls flattened to a 2D distance image, in meters.
+
+    A full 3D neighbor search scores wrong poses as perfect because the room
+    cloud is dense. The horizontal band does not.
+    """
+
+    def __init__(self, centers: np.ndarray, resolution: float = 0.10):
+        centers = np.asarray(centers, dtype=np.float64).reshape(-1, 3)
+        self.resolution = float(resolution)
+        self.ok = False
+        self.origin = np.zeros(2, dtype=np.float64)
+        self.nx = 0
+        self.ny = 0
+        self.pad = 0
+        self.image = np.zeros((1, 1), dtype=np.float32)
+        if centers.shape[0] < MIN_POINTS:
+            return
+        band = centers[(centers[:, 2] > -0.5) & (centers[:, 2] < 0.8)]
+        if band.shape[0] < MIN_POINTS:
+            return
+        flat = np.column_stack((band[:, 0], band[:, 1], np.zeros(band.shape[0])))
+        xy = _voxel_centers(flat, self.resolution)[:, :2]
+        self.origin = xy.min(axis=0) - 0.5
+        maxs = xy.max(axis=0) + 0.5
+        self.nx = int(math.ceil((maxs[0] - self.origin[0]) / self.resolution)) + 1
+        self.ny = int(math.ceil((maxs[1] - self.origin[1]) / self.resolution)) + 1
+        pix = np.floor((xy - self.origin) / self.resolution).astype(np.int32)
+        inside = (
+            (pix[:, 0] >= 0)
+            & (pix[:, 0] < self.nx)
+            & (pix[:, 1] >= 0)
+            & (pix[:, 1] < self.ny)
+        )
+        pix = pix[inside]
+        occupied = np.zeros((self.ny, self.nx), dtype=bool)
+        occupied[pix[:, 1], pix[:, 0]] = True
+        distance = np.minimum(distance_transform_edt(~occupied) * self.resolution, 1.0)
+        self.pad = int(math.ceil(12.0 / self.resolution)) + 3
+        self.image = np.full(
+            (self.ny + 2 * self.pad, self.nx + 2 * self.pad), 1.0, dtype=np.float32
+        )
+        self.image[self.pad : self.pad + self.ny, self.pad : self.pad + self.nx] = distance
+        self.ok = True
+
+    def best_poses(self, sample_xy: np.ndarray, yaw_step: int = 5) -> list[Pose]:
+        """Best upright poses. One distance-image pass per yaw, then a few seeds."""
+        if not self.ok or sample_xy.shape[0] < 80:
+            return []
+        peaks: list[tuple[float, Pose]] = []
+        step = max(int(yaw_step), 1)
+        for yaw_deg in range(-180, 180, step):
+            yaw = math.radians(float(yaw_deg))
+            c = math.cos(yaw)
+            s = math.sin(yaw)
+            rx = c * sample_xy[:, 0] - s * sample_xy[:, 1]
+            ry = s * sample_xy[:, 0] + c * sample_xy[:, 1]
+            pix = np.floor(np.column_stack((rx, ry)) / self.resolution).astype(np.int32)
+            acc = np.zeros((self.ny, self.nx), dtype=np.float32)
+            used = 0
+            for px, py in pix:
+                y0 = self.pad + int(py)
+                x0 = self.pad + int(px)
+                view = self.image[y0 : y0 + self.ny, x0 : x0 + self.nx]
+                if view.shape != acc.shape:
+                    continue
+                acc += view
+                used += 1
+            if used < 80:
+                continue
+            flat = int(np.argmin(acc))
+            ty = flat // self.nx
+            tx = flat % self.nx
+            pose = Pose(
+                float(self.origin[0] + (tx + 0.5) * self.resolution),
+                float(self.origin[1] + (ty + 0.5) * self.resolution),
+                0.0,
+                yaw,
+            )
+            peaks.append((float(acc[ty, tx]) / used, pose))
+        peaks.sort(key=lambda item: item[0])
+        chosen: list[Pose] = []
+        for _score, pose in peaks:
+            if any(
+                pose.xy_error(other) < 1.2 and pose.yaw_error_deg(other) < 25.0 for other in chosen
+            ):
+                continue
+            chosen.append(pose)
+            if len(chosen) == 3:
+                break
+        return chosen
+
+
+def _sensor_ring(points: np.ndarray) -> np.ndarray:
+    """Horizontal hits around the sensor. A steep tilt has too few of these to trust."""
+    points = np.asarray(points, dtype=np.float64).reshape(-1, 3)
+    if points.shape[0] == 0:
+        return np.zeros((0, 2), dtype=np.float64)
+    keep = (np.abs(points[:, 2]) < 0.45) & (np.hypot(points[:, 0], points[:, 1]) > 1.0)
+    xy = points[keep][:, :2]
+    if xy.shape[0] < 80:
+        return np.zeros((0, 2), dtype=np.float64)
+    bins = np.floor((np.arctan2(xy[:, 1], xy[:, 0]) + math.pi) * (6.0 / math.pi)).astype(np.int32)
+    if np.unique(np.clip(bins, 0, 11)).size < 6:
+        return np.zeros((0, 2), dtype=np.float64)
+    return _sample(xy, 160)
+
+
+def recover_pose(
+    index: MapIndex,
+    points: np.ndarray,
+    field: WallField | None = None,
+) -> tuple[Pose, float, float, int]:
+    """Find x, y, z, and yaw of an upright cloud against a room map.
+
+    The yaw/xy search is a lookup in the sensor-height distance image, then
+    ICP on the full 3D map pulls in height. Returns an empty count when the
+    cloud has no horizontal ring yet, so the caller keeps collecting slices.
+    """
+    points = np.asarray(points, dtype=np.float64).reshape(-1, 3)
+    empty = Pose(), 0.0, 1.0e9, 0
+    if index.tree is None or len(index) < MIN_POINTS or points.shape[0] < MIN_POINTS:
+        return empty
+    sample = _sensor_ring(points)
+    if sample.shape[0] < 80:
+        return empty
+    if field is None or not field.ok:
+        field = WallField(index.centers)
+    seeds = field.best_poses(sample)
+    if not seeds:
+        return empty
+    return _pull_in(index, _sample(_wall_points(points), 900), seeds)
 
 
 def global_search(index: MapIndex, points: np.ndarray) -> tuple[Pose, float, float, int]:

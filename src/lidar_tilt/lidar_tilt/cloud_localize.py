@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import threading
+import time
 from pathlib import Path
 
 import numpy as np
@@ -23,11 +24,12 @@ from lidar_tilt.register import (
     MapIndex,
     OccupancyGrid,
     Pose,
+    WallField,
     accepted,
     apply_pose,
-    global_search,
     icp,
     load_ply,
+    recover_pose,
     save_ply,
     score_pose,
 )
@@ -125,9 +127,16 @@ class CloudLocalizer(Node):
             self.get_logger().info("Empty map. The first slice starts the grid at the origin.")
 
         self._index = MapIndex(self._grid.occupied_centers())
+        self._field = WallField(self._index.centers)
+        self._field_n = len(self._index)
         self._pose = Pose()
         self._lost = self._seeded
         self._misses = 0
+        self._have_pose = not self._seeded
+        self._recent: list[np.ndarray] = []
+        self._recent_n = 0
+        self._map_sent_n = -1
+        self._map_sent_t = 0.0
         self._lock = threading.Lock()
 
         pose_qos = QoSProfile(
@@ -160,6 +169,8 @@ class CloudLocalizer(Node):
 
     def _publish_tf(self) -> None:
         with self._lock:
+            if not self._have_pose:
+                return
             pose = self._pose.copy()
         message = TransformStamped()
         message.header.stamp = self.get_clock().now().to_msg()
@@ -194,11 +205,24 @@ class CloudLocalizer(Node):
         self._pose_pub.publish(message)
 
     def _publish_map(self) -> None:
+        now = time.monotonic()
         with self._lock:
             centers = self._index.centers
-        if centers.shape[0] == 0:
-            return
+            count = int(centers.shape[0])
+            if count == 0 or count == self._map_sent_n:
+                return
+            if self._map_sent_n >= 0 and now - self._map_sent_t < 1.0:
+                return
+            self._map_sent_n = count
+            self._map_sent_t = now
         self._map_pub.publish(_xyz_cloud(centers, self._map_frame, self.get_clock().now().to_msg()))
+
+    def _field_for(self, index: MapIndex) -> WallField:
+        if self._field.ok and self._field_n == len(index):
+            return self._field
+        self._field = WallField(index.centers)
+        self._field_n = len(index)
+        return self._field
 
     def _paint(self, pose: Pose, points: np.ndarray) -> None:
         if not self._extend:
@@ -223,16 +247,17 @@ class CloudLocalizer(Node):
             seeded = self._seeded
             guess = self._pose.copy()
             index = self._index
+        if not self._extend:
+            self._track_fixed_map(points, message.header.stamp, index, guess, lost)
+            return
         if not seeded:
-            if not self._extend:
-                self.get_logger().warning("No map is loaded and extend_map is off.")
-                return
             pose = Pose()
             with self._lock:
                 self._pose = pose
                 self._lost = False
                 self._misses = 0
                 self._seeded = True
+                self._have_pose = True
                 self._paint(pose, points)
             self._publish_pose(message.header.stamp)
             self._publish_map()
@@ -250,13 +275,17 @@ class CloudLocalizer(Node):
             held = accepted(fraction, rms, count)
         if not held:
             if lost or index.tree is None:
-                pose, fraction, rms, count = global_search(index, points)
+                pose, fraction, rms, count = recover_pose(
+                    index, points, self._field_for(index)
+                )
                 kind = "GLOBAL"
             else:
                 pose, fraction, rms, count = icp(index, points, guess)
                 kind = "TRACK"
                 if not accepted(fraction, rms, count):
-                    pose, fraction, rms, count = global_search(index, points)
+                    pose, fraction, rms, count = recover_pose(
+                        index, points, self._field_for(index)
+                    )
                     kind = "GLOBAL"
         if not accepted(fraction, rms, count):
             with self._lock:
@@ -271,10 +300,73 @@ class CloudLocalizer(Node):
             self._pose = pose
             self._lost = False
             self._misses = 0
+            self._have_pose = True
             self._paint(pose, points)
         self._publish_pose(message.header.stamp)
         self._publish_map()
         self._log_fix(pose, fraction, rms, kind)
+
+    def _track_fixed_map(self, points, stamp, index: MapIndex, guess: Pose, lost: bool) -> None:
+        """Keep a fixed map. Hold while the walls fit. Search again after a turn."""
+        if not lost and index.tree is not None:
+            far = points[np.hypot(points[:, 0], points[:, 1]) > 1.0]
+            # A steep tilt looks at the floor or ceiling and must not drop a good pose.
+            if far.shape[0] < 80:
+                return
+            fraction, rms, count = score_pose(index, far, guess, gate=0.15)
+            if count >= 40 and fraction >= 0.80 and rms <= 0.10:
+                with self._lock:
+                    self._misses = 0
+                    self._recent.clear()
+                    self._recent_n = 0
+                self._publish_pose(stamp)
+                self._log_fix(guess, fraction, rms, "HOLD")
+                return
+            with self._lock:
+                self._misses += 1
+                misses = self._misses
+            if misses < 3:
+                self.get_logger().warning(
+                    f"pose slipping inliers={fraction:.2f} rms={rms:.3f}"
+                )
+                return
+            self.get_logger().warning(
+                f"pose lost inliers={fraction:.2f} rms={rms:.3f}"
+            )
+        with self._lock:
+            self._lost = True
+            self._recent.append(points)
+            self._recent_n += int(points.shape[0])
+            while self._recent_n > 4000 and len(self._recent) > 1:
+                dropped = self._recent.pop(0)
+                self._recent_n -= int(dropped.shape[0])
+            ready = self._recent_n >= 400
+            cloud = np.vstack(self._recent) if ready else None
+        if cloud is None:
+            return
+        started = time.perf_counter()
+        pose, fraction, rms, count = recover_pose(index, cloud, self._field_for(index))
+        elapsed = time.perf_counter() - started
+        if count == 0:
+            return
+        with self._lock:
+            self._recent.clear()
+            self._recent_n = 0
+        if not (count >= 40 and fraction >= 0.80 and rms <= 0.10):
+            self.get_logger().warning(
+                f"recover rejected inliers={fraction:.2f} rms={rms:.3f} search={elapsed:.1f}s"
+            )
+            return
+        self.get_logger().info(f"search {elapsed:.1f}s")
+        with self._lock:
+            self._pose = pose
+            self._lost = False
+            self._misses = 0
+            self._have_pose = True
+            self._seeded = True
+        self._publish_pose(stamp)
+        self._publish_map()
+        self._log_fix(pose, fraction, rms, "RECOVER")
 
     def _save(self) -> None:
         if not self._extend:

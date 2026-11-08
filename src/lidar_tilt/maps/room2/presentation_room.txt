@@ -1,0 +1,10 @@
+presentation room
+origin is the base sweep
++X is the base lidar forward, +Y is its left, +Z is up
+positive heading in the notes below is clockwise from the base
+base x_m 0.000 y_m 0.000 z_m 0.000 yaw_cw_deg -0.0
+plus90 x_m 0.010 y_m -0.030 z_m -0.000 yaw_cw_deg 91.4
+plus180 x_m -0.080 y_m -0.020 z_m -0.038 yaw_cw_deg -179.9
+back17ft x_m 4.810 y_m 0.030 z_m -0.065 yaw_cw_deg 2.8
+back17ft_plus90 x_m 4.820 y_m -0.110 z_m -0.111 yaw_cw_deg 89.3
+back17ft_plus180 x_m 4.710 y_m -0.070 z_m 0.003 yaw_cw_deg -178.3
