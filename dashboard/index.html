@@ -127,6 +127,47 @@
       </footer>
     </section>
 
+    <section class="beacon-card" id="sdr-card" aria-label="SDR phone detection">
+      <header class="card-header">
+        <div>
+          <p class="card-kicker">SDR · RECEIVE-ONLY PHONE DETECT</p>
+          <h2>Phone &amp; device contacts</h2>
+        </div>
+        <span class="feed-state" id="sdr-state" data-state="idle">Idle</span>
+      </header>
+      <div class="tiles" id="sdr-tiles">
+        <div class="tile"><span class="tile-label">RF hub</span><strong id="s-hub">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Closest contact</span><strong id="s-close">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Closest signal</span><strong id="s-close-rssi">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Wi-Fi devices (5 min)</span><strong id="s-wifi">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">BLE devices (5 min)</span><strong id="s-ble">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Bluetooth devices (5 min)</span><strong id="s-bt">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Cellular hits / min</span><strong id="s-cell-rate">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Strongest uplink</span><strong id="s-cell-best">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Hits / min (all)</span><strong id="s-rate">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Hits since start</span><strong id="s-total">&mdash;</strong></div>
+      </div>
+      <div class="beacon-charts">
+        <figure>
+          <figcaption>Cellular uplink energy, last 5 min <small id="s-cell-note">Pluto, no hits yet</small></figcaption>
+          <canvas id="c-cell" role="img" aria-label="Cellular uplink power chart"></canvas>
+        </figure>
+        <div class="ping-log">
+          <p class="tile-label">Devices heard (strongest first)</p>
+          <ol id="s-devices"><li class="muted">Waiting for contacts&hellip;</li></ol>
+        </div>
+        <div class="ping-log">
+          <p class="tile-label">Recent hits</p>
+          <ol id="s-events"><li class="muted">Waiting for contacts&hellip;</li></ol>
+        </div>
+      </div>
+      <p class="cal-status" id="sdr-note" role="status" aria-live="polite">SDR feed: unknown until connected</p>
+      <footer class="card-footer">
+        <span class="endpoint">SDR FEED · :8085 (reads the rf hub on the Pi)</span>
+        <div class="actions"><button type="button" id="sdr-retry">Retry</button></div>
+      </footer>
+    </section>
+
     <section class="ins-card" id="ins-card" aria-label="Drone position, dead reckoning">
       <header class="card-header">
         <div>

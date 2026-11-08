@@ -50,7 +50,8 @@ def save_start():
     try:
         with open(START_FILE, "w") as f:
             json.dump({"lat": DR.start_lat, "lon": DR.start_lon, "alt": DR.start_alt,
-                       "x": DR.start_xy[0], "y": DR.start_xy[1], "heading": DR.init_heading_deg}, f)
+                       "x": DR.start_xy[0], "y": DR.start_xy[1], "heading": DR.init_heading_deg,
+                       "mode": DR.mode, "use_mag": DR.use_mag}, f)
     except OSError:
         pass
 
@@ -233,11 +234,13 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/mode":
                 with LOCK:
                     DR.set_mode(q["mode"])
+                    save_start()
                 return self._send(200, {"mode": q["mode"]})
             if u.path == "/magnetometer":
                 with LOCK:
                     DR.use_mag = str(q.get("on", "1")).lower() in ("1", "true", "on", "yes")
                     DR.att.mag_allowed = DR.use_mag
+                    save_start()
                 return self._send(200, {"use_mag": DR.use_mag})
             if u.path == "/health":
                 return self._send(200, {"ok": True})
@@ -291,6 +294,11 @@ def main():
                       mag_cal=load_mag_cal(os.path.join(os.path.dirname(os.path.abspath(__file__)), "mag_cal.json")),
                       mag_aligned=False)
     DR.agl_in = None
+    if saved.get("mode") in ("auto", "flying", "grounded", "walking"):
+        DR.set_mode(saved["mode"])          # the demo mode survives a restart or a Pi reboot
+    if "use_mag" in saved:
+        DR.use_mag = bool(saved["use_mag"])
+        DR.att.mag_allowed = DR.use_mag
     LOGF = open(a.log, "a") if a.log else None
 
     if a.sim:
