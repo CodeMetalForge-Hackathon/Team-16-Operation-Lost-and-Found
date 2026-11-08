@@ -167,8 +167,17 @@ def bt_sightings(adapter, seconds):
 
 
 def bt_feed(out, lock, adapter, stop):
-    """Continuous bt/ble sightings, deduped one line per mac per 10 s."""
+    """Continuous bt/ble sightings, deduped one line per mac per 10 s.
+
+    One thread per adapter; records carry "adapter" so the same phone
+    seen by two adapters yields two distinguishable lines.
+    """
     last = {}
+    ctrl = resolve_controller(adapter)
+    if ctrl is None or ctrl == "00:00:00:00:00:00":
+        print(f"ERROR: bt unavailable ({adapter}: no controller)",
+              file=sys.stderr)
+        return
     try:
         while not stop.is_set():
             for rec in bt_sightings(adapter, 15):
@@ -177,21 +186,24 @@ def bt_feed(out, lock, adapter, stop):
                 if time.time() - last.get(rec["mac"], 0) < 10.0:
                     continue
                 last[rec["mac"]] = time.time()
+                rec["adapter"] = adapter
                 emit(out, lock, rec)
     except RuntimeError as e:
-        print(f"ERROR: bt unavailable ({e})", file=sys.stderr)
+        print(f"ERROR: bt unavailable ({adapter}: {e})", file=sys.stderr)
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--iface", default="mon1",
                     help="Alfa monitor interface (create with iw first)")
-    ap.add_argument("--adapter", default="hci0", help="BT adapter, e.g. hci0")
+    ap.add_argument("--adapter", default="hci0,hci1",
+                    help="comma list of BT adapters, e.g. hci0,hci1")
     ap.add_argument("--out", default="monitor_hits.jsonl")
     ap.add_argument("--no-bt", action="store_true")
     ap.add_argument("--no-wifi", action="store_true")
     args = ap.parse_args()
 
+    adapters = [a.strip() for a in args.adapter.split(",") if a.strip()]
     out = open(args.out, "a")
     lock = threading.Lock()
     stop = threading.Event()
@@ -201,9 +213,10 @@ def main():
                                         args=(out, lock, args.iface, stop),
                                         daemon=True))
     if not args.no_bt:
-        threads.append(threading.Thread(target=bt_feed,
-                                        args=(out, lock, args.adapter, stop),
-                                        daemon=True))
+        for adapter in adapters:
+            threads.append(threading.Thread(target=bt_feed,
+                                            args=(out, lock, adapter, stop),
+                                            daemon=True))
     for t in threads:
         t.start()
     try:
