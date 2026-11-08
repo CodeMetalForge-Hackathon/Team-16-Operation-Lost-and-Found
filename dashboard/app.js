@@ -629,7 +629,7 @@ const mapEls = {
   state: document.querySelector("#map-state"), note: document.querySelector("#map-note"),
   lock: document.querySelector("#m-lock"), xy: document.querySelector("#m-xy"), z: document.querySelector("#m-z"),
   hdg: document.querySelector("#m-hdg"), dist: document.querySelector("#m-dist"),
-  canvas: document.querySelector("#c-map"), retry: document.querySelector("#map-retry"), clear: document.querySelector("#map-clear"),
+  canvas: document.querySelector("#c-map"), rotNote: document.querySelector("#map-rot-note"), rotate: document.querySelector("#map-rotate"), retry: document.querySelector("#map-retry"), clear: document.querySelector("#map-clear"),
 };
 let mapTimer = null, mapFails = 0, mapDoc = null, mapTrail = [], mapDist = 0, mapLast = null;
 
@@ -649,6 +649,18 @@ function readPose(p) {
   return { x, y, z: Number.isFinite(z) ? z : 0, yawCw: yawCw == null ? null : Number(yawCw) };
 }
 
+let mapRot = 0;   // quarter turns clockwise, remembered in this browser
+try { mapRot = Number(localStorage.getItem("team16.mapRot")) || 0; } catch { /* storage unavailable */ }
+// rotate a map-metre point (x right, y up) by mapRot quarter turns clockwise
+function rotPt(x, y) {
+  switch (((mapRot % 4) + 4) % 4) {
+    case 1: return [y, -x];
+    case 2: return [-x, -y];
+    case 3: return [-y, x];
+    default: return [x, y];
+  }
+}
+
 function drawMap() {
   const canvas = mapEls.canvas, d = mapDoc;
   const dpr = window.devicePixelRatio || 1;
@@ -664,38 +676,44 @@ function drawMap() {
     return;
   }
   const mpp = d.meters_per_pixel || 0.1, ox = d.origin?.px ?? 0, oy = d.origin?.py ?? 0;
-  const cur0 = readPose(d.pose);
+  const cur = readPose(d.pose);
   // view = the map grid plus anywhere the track has been, so the position never falls off the plot
-  let x0 = -ox * mpp, x1 = (d.width - ox) * mpp, y0 = (oy - d.height) * mpp, y1 = oy * mpp;
-  for (const p of cur0 ? [...mapTrail, cur0] : mapTrail) { x0 = Math.min(x0, p.x - 0.5); x1 = Math.max(x1, p.x + 0.5); y0 = Math.min(y0, p.y - 0.5); y1 = Math.max(y1, p.y + 0.5); }
+  let X0 = -ox * mpp, X1 = (d.width - ox) * mpp, Y0 = (oy - d.height) * mpp, Y1 = oy * mpp;
+  for (const p of cur ? [...mapTrail, cur] : mapTrail) { X0 = Math.min(X0, p.x - 0.5); X1 = Math.max(X1, p.x + 0.5); Y0 = Math.min(Y0, p.y - 0.5); Y1 = Math.max(Y1, p.y + 0.5); }
+  const corners = [rotPt(X0, Y0), rotPt(X1, Y0), rotPt(X0, Y1), rotPt(X1, Y1)];
+  const x0 = Math.min(...corners.map((c) => c[0])), x1 = Math.max(...corners.map((c) => c[0]));
+  const y0 = Math.min(...corners.map((c) => c[1])), y1 = Math.max(...corners.map((c) => c[1]));
   const pad = 14, scale = Math.min((w - 2 * pad) / (x1 - x0), (h - 2 * pad) / (y1 - y0));   // px per metre
   const left = (w - (x1 - x0) * scale) / 2, top = (h - (y1 - y0) * scale) / 2;
-  const mx = (xm) => left + (xm - x0) * scale, my = (ym) => top + (y1 - ym) * scale;
+  const sx = (xm, ym) => { const r = rotPt(xm, ym); return left + (r[0] - x0) * scale; };
+  const sy = (xm, ym) => { const r = rotPt(xm, ym); return top + (y1 - r[1]) * scale; };
   const cell = mpp * scale;
   g.strokeStyle = "rgba(148,180,169,0.2)"; g.strokeRect(left, top, (x1 - x0) * scale, (y1 - y0) * scale);
   g.strokeStyle = "rgba(148,180,169,0.12)"; g.fillStyle = cssVar("--muted"); g.font = "10px ui-monospace, monospace";
-  for (let e = Math.ceil(x0); e <= x1; e++) { g.beginPath(); g.moveTo(mx(e), top); g.lineTo(mx(e), top + (y1 - y0) * scale); g.stroke(); }
-  for (let n = Math.ceil(y0); n <= y1; n++) { g.beginPath(); g.moveTo(left, my(n)); g.lineTo(left + (x1 - x0) * scale, my(n)); g.stroke(); }
+  for (let e = Math.ceil(X0); e <= X1; e++) { g.beginPath(); g.moveTo(sx(e, Y0), sy(e, Y0)); g.lineTo(sx(e, Y1), sy(e, Y1)); g.stroke(); }
+  for (let n = Math.ceil(Y0); n <= Y1; n++) { g.beginPath(); g.moveTo(sx(X0, n), sy(X0, n)); g.lineTo(sx(X1, n), sy(X1, n)); g.stroke(); }
   g.fillText("1 m grid", left + 4, top + (y1 - y0) * scale - 4);
   g.fillStyle = "rgba(237,247,243,0.85)";
+  const sz = Math.max(1.5, cell);
   for (const [col, row] of d.outline || []) {
-    const xm = (col - ox) * mpp, ym = (oy - row) * mpp;   // cell's lower-left corner, metres
-    g.fillRect(mx(xm), my(ym) - cell, Math.max(1.5, cell), Math.max(1.5, cell));
+    const xm = (col - ox + 0.5) * mpp, ym = (oy - row - 0.5) * mpp;   // cell centre, metres
+    g.fillRect(sx(xm, ym) - sz / 2, sy(xm, ym) - sz / 2, sz, sz);
   }
-  g.fillStyle = cssVar("--green"); g.beginPath(); g.arc(mx(0), my(0), 4, 0, 6.3); g.fill();   // map origin
+  g.fillStyle = cssVar("--green"); g.beginPath(); g.arc(sx(0, 0), sy(0, 0), 4, 0, 6.3); g.fill();   // map origin
   g.strokeStyle = cssVar("--cyan"); g.lineWidth = 2; g.beginPath();
-  mapTrail.forEach((p, i) => (i ? g.lineTo(mx(p.x), my(p.y)) : g.moveTo(mx(p.x), my(p.y))));
+  mapTrail.forEach((p, i) => (i ? g.lineTo(sx(p.x, p.y), sy(p.x, p.y)) : g.moveTo(sx(p.x, p.y), sy(p.x, p.y))));
   g.stroke();
-  const cur = readPose(d.pose);
   if (cur) {
-    const X = mx(cur.x), Y = my(cur.y);
-    if (cur.yawCw != null) {   // heading is clockwise from +X (map right); canvas Y points down so clockwise is positive
-      const a = (cur.yawCw * Math.PI) / 180, len = 16;
+    const X = sx(cur.x, cur.y), Y = sy(cur.x, cur.y);
+    if (cur.yawCw != null) {   // heading is clockwise from +X; each clockwise map turn adds 90 degrees on screen
+      const a = ((cur.yawCw + 90 * (((mapRot % 4) + 4) % 4)) * Math.PI) / 180, len = 16;
       g.strokeStyle = cssVar("--red"); g.lineWidth = 2.5; g.beginPath();
       g.moveTo(X, Y); g.lineTo(X + Math.cos(a) * len, Y + Math.sin(a) * len); g.stroke();
     }
     g.fillStyle = cssVar("--red"); g.beginPath(); g.arc(X, Y, 6, 0, 6.3); g.fill();
   }
+  const turns = ((mapRot % 4) + 4) % 4;
+  mapEls.rotNote.textContent = turns ? "(rotated " + turns * 90 + "° clockwise)" : "(+X right, +Y up)";
 }
 
 function renderMap(d) {
@@ -750,6 +768,11 @@ mapEls.clear.addEventListener("click", async () => {
   mapTrail = []; mapDist = 0; mapLast = null; drawMap();
   const h = normalizeHost(hostInput.value);
   if (h) { try { await fetch("http://" + h + ":8086/clear", { method: "POST" }); } catch { /* feed unreachable */ } }
+});
+mapEls.rotate.addEventListener("click", () => {
+  mapRot = (mapRot + 1) % 4;
+  try { localStorage.setItem("team16.mapRot", String(mapRot)); } catch { /* storage unavailable */ }
+  drawMap();
 });
 window.addEventListener("resize", () => { if (mapDoc) drawMap(); });
 

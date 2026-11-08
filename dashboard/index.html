@@ -184,13 +184,13 @@
         <div class="tile"><span class="tile-label">Distance walked</span><strong id="m-dist">&mdash;</strong></div>
       </div>
       <figure class="ins-plot">
-        <figcaption>Top-down map, lidar positions only <small>(green = first fix, red = now, +X right, +Y up; origin = first cloud of the saved map)</small></figcaption>
+        <figcaption>Top-down map, lidar positions only <small>(green = origin, red = now, cyan = track) <span id="map-rot-note"></span></small></figcaption>
         <canvas id="c-map" role="img" aria-label="Lidar room map with position track"></canvas>
       </figure>
       <p class="cal-status" id="map-note" role="status" aria-live="polite">Map feed: unknown until connected</p>
       <footer class="card-footer">
         <span class="endpoint">MAP FEED · :8086 (lidar laptop posts here)</span>
-        <div class="actions"><button type="button" id="map-clear">Clear track</button><button type="button" id="map-retry">Retry</button></div>
+        <div class="actions"><button type="button" id="map-rotate">Rotate map</button><button type="button" id="map-clear">Clear track</button><button type="button" id="map-retry">Retry</button></div>
       </footer>
     </section>
 
