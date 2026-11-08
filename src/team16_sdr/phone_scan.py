@@ -19,6 +19,11 @@ import numpy as np
 GROUP_HZ = 1_000_000  # bin-group width for hit detection
 FULL_SCALE = 2048.0   # 12-bit IQ full scale
 PLUTO_LOCK = "/tmp/pluto-sdr.lock"  # /tmp: reboot-clean (default, bare usb:)
+UL_RANGES_MHZ = ("663-716,777-788,824-849,1710-1755,1850-1920,2502-2570")
+# US uplink allocations (B71/B12/B13/B29, Cellular 850, AWS/B4/B2, PCS,
+# B7). A 20 MHz dwell window catches neighbouring DOWNLINK carriers (the
+# receiver has no RF selectivity at these offsets); hits outside these
+# ranges are towers/infra, not phone PRACH, and are dropped.
 
 
 def resolve_uri(serial):
@@ -188,11 +193,16 @@ def main():
                     help="LTE uplink centers: B7, B4, B12")
     ap.add_argument("--margin-db", type=float, default=8.0)
     ap.add_argument("--out", default="rf_hits.jsonl")
+    ap.add_argument("--ul-ranges", default=UL_RANGES_MHZ,
+                    help="uplink allocations MHz lo-hi; hits outside dropped")
     ap.add_argument("--once", action="store_true",
                     help="single dwell on --freq, print result, exit")
     args = ap.parse_args()
 
     channels = [int(c) for c in args.channels.split(",") if c.strip()]
+    ul = [tuple(int(float(x)) * 1_000_000
+                for x in r.split("-")) for r in args.ul_ranges.split(",")
+          if r.strip()]
     if args.pluto_serial:
         args.uri = resolve_uri(args.pluto_serial)
     lock = acquire_pluto_lock(lock_path_for(args.uri, args.pluto_serial))
@@ -214,9 +224,11 @@ def main():
         res = one_shot(args.freq, max(0.5, args.dwell))
         if res:
             floor, hz, db = res
-            line = json.dumps({"t": round(time.time(), 3), "hz": hz,
+            abs_hz = int(args.freq + hz)
+            line = json.dumps({"t": round(time.time(), 3), "hz": abs_hz,
                                "power_db": round(db, 2), "pose": None})
-            print(line, flush=True)
+            if any(lo <= abs_hz <= hi for lo, hi in ul):
+                print(line, flush=True)
         return 0
 
     timeouts = 0
@@ -236,8 +248,11 @@ def main():
                     if res is None:
                         continue
                     floor, hz, db = res
+                    abs_hz = int(hz0 + hz)
+                    if not any(lo <= abs_hz <= hi for lo, hi in ul):
+                        continue  # downlink/infra carrier in the window
                     line = json.dumps({"t": round(time.time(), 3),
-                                       "hz": int(hz0 + hz),
+                                       "hz": abs_hz,
                                        "power_db": round(db, 2),
                                        "pose": None})
                     out.write(line + "\n")
