@@ -2,7 +2,7 @@
 
 Receive-only SDR work for the pod.
 
-Listen on the band a mentor clears. Log time, frequency, and power, and attach the pod pose when one exists. This folder does not transmit.
+Listen on the band a mentor clears. Log time, frequency, and power, and attach the pod pose when one exists. The SDR never transmits; the Pi's own radios (bait AP, Bluetooth inquiry) do.
 
 ## Tools (run on the Pi, `hacker@192.168.8.163`, repo under `~/team16_sdr`)
 
@@ -19,7 +19,26 @@ monitor interface plus Bluetooth/BLE sightings to `monitor_hits.jsonl`; the Pi's
 onboard WiFi broadcasts the open bait AP `Low Quality Bait` so nearby phones probe and
 associate. Bluetooth scan requests: `python3 bt_scan.py` runs 15 s active-scan
 windows (BR/EDR inquiry + BLE scan requests) that provoke nearby devices into
-answering.
+answering. `monitor_scan.py --adapter` takes a comma list (default `hci0,hci1`):
+one passive-sighting feed per adapter, each record stamped `"adapter"`; a missing
+controller prints `ERROR: bt unavailable (hciN: no controller)` and the other
+feeds run. On the Pi, `hci1` (the Alfa's MT7961 BT half) cannot come up —
+`hciconfig hci1 up` wedges in D state (kernel NULL deref in
+`btmtk_usb_hci_wmt_sync` on 6.8.0-1065-raspi) — so `hci0` sniffs and coaxes.
+`python3 bt_coax.py` is the TX side: `discoverable on` + scan bursts on `hci0`
+that make phones answer, one `coax-window` summary line per window.
+Correlator: `python3 phone_phone.py` merges `monitor_hits.jsonl` with
+`rf_hits.jsonl` into `phone_contacts.jsonl` (WiFi/BT contacts per MAC inside
+`--window`, bait-SSID probes or `--min-hits` sightings qualify; cellular rf hits
+in an uplink range become `kind: "cell"` contacts); `--report` ranks contacts
+strongest-signal-first and labels the top one `closest`. Demo runner:
+`bash run_pod.sh` brings up the Alfa monitor iface, starts all three feeds plus
+the coaxer, waits `SECONDS_WAIT` (default 60 s), then prints the report. Bait AP:
+`pod-bait.service` (oneshot, enabled) keeps `Low Quality Bait` on `wlan0`
+channel 1 across reboots. The Pluto is lock-guarded: `phone_scan.py` holds an
+exclusive flock on `/tmp/pluto-sdr.lock` (libiio allows one buffer per device);
+a second instance prints `ERROR: Pluto busy (holder has /tmp/pluto-sdr.lock)`
+and exits 1.
 
 Honest scope: a phone transmits its PRACH preamble only after decoding a downlink
 cell (LTE: PSS/SSS sync, PBCH/MIB, SIB1, SIB2 `RACH-ConfigCommon`; NR: SSB + SIB1)
