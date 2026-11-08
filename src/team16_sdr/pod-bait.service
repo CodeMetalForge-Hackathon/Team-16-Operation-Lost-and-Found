@@ -1,0 +1,12 @@
+[Unit]
+Description=Team16 bait AP (Low Quality Bait)
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/nmcli device wifi hotspot ifname wlan0 ssid "Low Quality Bait" con-name pod-sar
+ExecStop=/usr/bin/nmcli device disconnect wlan0
+
+[Install]
+WantedBy=multi-user.target
