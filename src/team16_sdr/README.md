@@ -7,7 +7,8 @@ Listen on the band a mentor clears. Log time, frequency, and power, and attach t
 ## Tools (run on the Pi, `hacker@192.168.8.163`, repo under `~/team16_sdr`)
 
 Cellular uplink scanner (Pluto, RX-only): `python3 phone_scan.py --uri usb:` dwells
-2 s per channel over the default cellular uplink list (2620/1750/850 MHz), prints
+2 s per channel over the default cellular uplink list (2535/1730/707 MHz =
+B7/B4/B12), prints
 `rf_hit` JSON lines (`t`, `hz`, `power_db`, `pose`) on energy above the noise floor,
 and appends them to `rf_hits.jsonl`. Walk-log proximity: `python3 walk_log.py
 --role log` (Enter to sample, type a position) then `python3 walk_log.py --role
