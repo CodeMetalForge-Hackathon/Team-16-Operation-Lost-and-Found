@@ -1,8 +1,0 @@
-{"type": "plan", "t": 1794100003.461, "box": 1, "lat": 44.472162, "lon": -71.209919, "size_m": 500, "poa": 0.439, "searched": 0.0, "sim": true}
-{"type": "pose_fix", "t": 1794100003.463, "source": "coast", "lat": 44.471861, "lon": -71.210001, "z": 60, "sim": true}
-{"type": "detection", "t": 1794100003.463, "cls": "unnatural-color", "color": "orange", "confidence": 0.91, "bbox": [612, 340, 38, 30], "pose": {"lat": 44.471861, "lon": -71.210001, "z": 60}, "sim": true}
-{"type": "detection", "t": 1794100003.863, "cls": "person", "confidence": 0.74, "bbox": [600, 330, 60, 90], "pose": {"lat": 44.471861, "lon": -71.210001, "z": 60}, "sim": true}
-{"type": "drop_event", "t": 1794100004.463, "pose": {"lat": 44.471861, "lon": -71.210001, "z": 60}, "beacon_id": "B1", "kind": "confirmed", "reason": "person detected", "beacons_left": 9, "sim": true}
-{"type": "plan", "t": 1794100003.48, "status": "located", "lat": 44.471982, "lon": -71.209919, "size_m": 0, "searched": 0.0, "sim": true}
-{"type": "sim_truth", "t": 1794100003.48, "lat": 44.472303, "lon": -71.209934, "found": true, "method": "realistic", "dist_from_route_m": 36, "based_on": "case #96 (Three unnamed hikers), found 252 m from their route", "sim": true}
-{"type": "pose_fix", "t": 1794100003.483, "source": "coast", "lat": 44.471988, "lon": -71.209975, "z": 60, "sim": true}

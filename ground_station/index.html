@@ -58,6 +58,8 @@
   #sim-reset { border:1px solid #ff3b5c; }
   #sim-msg { font-size:12.5px; color:var(--muted); min-height:18px; }
   #sim-msg.err { color:#ff7b8a; }
+  #coords { position:absolute; top:50px; right:12px; background:rgba(11,14,18,.85); color:#e8edf2; font:12px ui-monospace,Consolas,monospace;
+             padding:4px 8px; border-radius:6px; border:1px solid #2a313a; pointer-events:none; }
   #pickhint { position:absolute; bottom:44px; left:50%; transform:translateX(-50%); background:rgba(255,210,63,.95); color:#111; font-size:12.5px;
          padding:5px 10px; border-radius:6px; display:none; font-weight:600; }
   #tip { position:absolute; pointer-events:none; background:rgba(12,14,18,.95); border:1px solid var(--line);
@@ -94,7 +96,9 @@
       <label><input type="checkbox" id="t-hill" checked>terrain detail</label>
       <label><input type="checkbox" id="t-heat" checked>search heat</label>
       <label><input type="checkbox" id="t-places" checked>places</label>
+      <label><input type="checkbox" id="t-grid" checked>lat/lon grid</label>
     </div>
+    <div id="coords">move the mouse over the map</div>
     <div class="hint">scroll to zoom · drag to pan · hover a symbol for details</div>
     <div id="found"><div class="big">SUBJECT LOCATED</div><div class="det" id="found-det"></div>
       <div class="sim" id="found-sim"></div><button id="found-go">Show on map</button> <button id="found-x" style="background:#2a313a">Hide</button></div>
@@ -126,9 +130,13 @@
         </div>
         <div><label for="sim-hiker">How does the hiker behave?</label>
           <select id="sim-hiker">
-            <option value="realistic" selected>Realistic: like real White Mountains cases</option>
-            <option value="model">Follows our model (best case)</option>
+            <option value="realistic" selected title="Hides like real White Mountains cases, independent of our search model">Realistic</option>
+            <option value="model" title="Hides where our search model says is most likely">Best-Case Scenario</option>
           </select></div>
+        <div class="row2">
+          <div><label for="sim-lat">Latitude (°N)</label><input id="sim-lat" placeholder="e.g. 44.1608" inputmode="decimal"></div>
+          <div><label for="sim-lon">Longitude (°W as negative)</label><input id="sim-lon" placeholder="e.g. -71.6440" inputmode="decimal"></div>
+        </div>
         <div id="sim-point" style="font-size:12.5px;color:var(--muted)"></div>
         <div class="btns"><button id="sim-go">Start simulation</button><button id="sim-stop">Stop</button>
           <button id="sim-reset" title="Stop the pod and clear the search, so you can start over">Reset search</button></div>
@@ -239,7 +247,7 @@ function setMode(id) { ['b-region', 'b-search', 'b-pod'].forEach(b => document.g
 document.getElementById('b-search').onclick = () => { follow = false; setMode('b-search'); if (S) frameBox(...searchBox(), 1.05); };
 document.getElementById('b-region').onclick = () => { follow = false; setMode('b-region'); if (L) { V = { cx: (L.left + L.right) / 2, cy: (L.bottom + L.top) / 2, mpp: 1e9 }; draw(); } };
 document.getElementById('b-pod').onclick = () => { follow = true; setMode('b-pod'); if (V) V.mpp = Math.min(V.mpp, 8 / D()); draw(); };
-['t-hill', 't-heat', 't-places'].forEach(id => document.getElementById(id).onchange = draw);
+['t-hill', 't-heat', 't-places', 't-grid'].forEach(id => document.getElementById(id).onchange = draw);
 
 // ---- run a simulation anywhere on the map ----
 const selT = document.getElementById('sim-trail'), msg = document.getElementById('sim-msg');
@@ -248,12 +256,31 @@ fetch('/api/trails').then(r => r.json()).then(list => {
   list.forEach(t => { const o = document.createElement('option'); o.value = t.name; o.textContent = t.name; selT.appendChild(o); });
   pickMode();
 });
+const latIn = document.getElementById('sim-lat'), lonIn = document.getElementById('sim-lon');
+function showPickLL() {             // put the chosen point's coordinates in the boxes
+  const t = TRAILS.find(t => t.name === selT.value);
+  const ll = t ? [t.lat, t.lon] : PICK ? utmToLL(PICK.x, PICK.y) : null;
+  latIn.value = ll ? ll[0].toFixed(5) : ''; lonIn.value = ll ? ll[1].toFixed(5) : '';
+}
+function typedLL() {                // typing coordinates sets the last known point
+  let lat = parseFloat(latIn.value), lon = parseFloat(lonIn.value);
+  if (isNaN(lat) || isNaN(lon)) return;
+  if (lon > 0 && /w/i.test(lonIn.value)) lon = -lon;
+  if (lon > 0 && lon > 60 && lon < 80) lon = -lon;        // "71.64" in New Hampshire means 71.64° W
+  if (lat < 43 || lat > 45.5 || lon < -72.5 || lon > -70) { setMsg('That point is outside the White Mountains map (about 43–45.5° N, 70–72.5° W).', true); return; }
+  const [x, y] = llToUTM(lat, lon);
+  selT.value = ''; PICK = { x, y, name: null }; setMsg('');
+  if (V) { follow = false; setMode(''); V.cx = x; V.cy = y; V.mpp = Math.min(V.mpp, 30 / D()); }
+  pickMode();
+}
+[latIn, lonIn].forEach(el => { el.onchange = typedLL; el.onkeydown = e => { if (e.key === 'Enter') typedLL(); }; });
 function pickMode() {
+  showPickLL();
   const custom = !selT.value;
   const busy = S && S.job && (S.job.stage === 'building' || S.job.stage === 'flying');
   document.getElementById('pickhint').style.display = custom && !PICK && !busy ? 'block' : 'none';
   document.getElementById('sim-point').textContent = custom
-    ? (PICK ? 'Last known point set. Click the map again to move it.' : 'No point yet: click the map.')
+    ? (PICK ? 'Last known point set. Click the map again, or type new coordinates, to move it.' : 'No point yet: click the map or type coordinates.')
     : 'The search starts from this trail\'s route.';
   draw();
 }
@@ -364,6 +391,69 @@ cv.addEventListener('wheel', e => {
   V.cx = wx - (px - cv.width / 2) * V.mpp; V.cy = wy + (py - cv.height / 2) * V.mpp; setMode(''); draw();
 }, { passive: false });
 
+// UTM zone 19N (EPSG:26919) <-> WGS84 lat/lon, same formulas as geo.py
+const UTM_A = 6378137, UTM_F = 1 / 298.257223563, UTM_K0 = 0.9996, UTM_LON0 = -69 * Math.PI / 180;
+const UTM_E2 = UTM_F * (2 - UTM_F), UTM_EP2 = UTM_E2 / (1 - UTM_E2);
+function utmToLL(x, y) {
+  const e2 = UTM_E2, m = y / UTM_K0, mu = m / (UTM_A * (1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 ** 3 / 256));
+  const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+  const p1 = mu + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * Math.sin(2 * mu) + (21 * e1 * e1 / 16 - 55 * e1 ** 4 / 32) * Math.sin(4 * mu)
+           + (151 * e1 ** 3 / 96) * Math.sin(6 * mu) + (1097 * e1 ** 4 / 512) * Math.sin(8 * mu);
+  const n1 = UTM_A / Math.sqrt(1 - e2 * Math.sin(p1) ** 2), t1 = Math.tan(p1) ** 2, c1 = UTM_EP2 * Math.cos(p1) ** 2;
+  const r1 = UTM_A * (1 - e2) / (1 - e2 * Math.sin(p1) ** 2) ** 1.5, d = (x - 500000) / (n1 * UTM_K0);
+  const lat = p1 - (n1 * Math.tan(p1) / r1) * (d * d / 2 - (5 + 3 * t1 + 10 * c1 - 4 * c1 * c1 - 9 * UTM_EP2) * d ** 4 / 24
+            + (61 + 90 * t1 + 298 * c1 + 45 * t1 * t1 - 252 * UTM_EP2 - 3 * c1 * c1) * d ** 6 / 720);
+  const lon = UTM_LON0 + (d - (1 + 2 * t1 + c1) * d ** 3 / 6 + (5 - 2 * c1 + 28 * t1 - 3 * c1 * c1 + 8 * UTM_EP2 + 24 * t1 * t1) * d ** 5 / 120) / Math.cos(p1);
+  return [lat * 180 / Math.PI, lon * 180 / Math.PI];
+}
+function llToUTM(latD, lonD) {
+  const e2 = UTM_E2, lat = latD * Math.PI / 180, lon = lonD * Math.PI / 180;
+  const n = UTM_A / Math.sqrt(1 - e2 * Math.sin(lat) ** 2), t = Math.tan(lat) ** 2, c = UTM_EP2 * Math.cos(lat) ** 2, a = Math.cos(lat) * (lon - UTM_LON0);
+  const m = UTM_A * ((1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 ** 3 / 256) * lat - (3 * e2 / 8 + 3 * e2 * e2 / 32 + 45 * e2 ** 3 / 1024) * Math.sin(2 * lat)
+          + (15 * e2 * e2 / 256 + 45 * e2 ** 3 / 1024) * Math.sin(4 * lat) - (35 * e2 ** 3 / 3072) * Math.sin(6 * lat));
+  const x = UTM_K0 * n * (a + (1 - t + c) * a ** 3 / 6 + (5 - 18 * t + t * t + 72 * c - 58 * UTM_EP2) * a ** 5 / 120) + 500000;
+  const y = UTM_K0 * (m + n * Math.tan(lat) * (a * a / 2 + (5 - t + 9 * c + 4 * c * c) * a ** 4 / 24 + (61 - 58 * t + t * t + 600 * c - 330 * UTM_EP2) * a ** 6 / 720));
+  return [x, y];
+}
+const fmtDeg = (lat, lon, dp = 5) => `${Math.abs(lat).toFixed(dp)}° ${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(dp)}° ${lon >= 0 ? 'E' : 'W'}`;
+
+function drawLatLonGrid() {          // graticule: lines of equal latitude/longitude, labelled at the map edges
+  if (!document.getElementById('t-grid').checked) return;
+  const d = D(), W = cv.width, H = cv.height;
+  const cs = [[0, 0], [W, 0], [0, H], [W, H], [W / 2, 0], [W / 2, H]].map(([px, py]) => utmToLL(...toWorld(px, py)));
+  const la0 = Math.min(...cs.map(c => c[0])), la1 = Math.max(...cs.map(c => c[0]));
+  const lo0 = Math.min(...cs.map(c => c[1])), lo1 = Math.max(...cs.map(c => c[1]));
+  const step = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 1, 2].find(s => (lo1 - lo0) / s <= 7) || 2;
+  const dp = step >= 1 ? 0 : step >= 0.1 ? (step === 0.25 ? 2 : 1) : step >= 0.01 ? 2 : 3;
+  ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,.28)'; ctx.lineWidth = 1 * d; ctx.setLineDash([4 * d, 4 * d]);
+  ctx.font = `${11 * d}px ui-monospace,Consolas,monospace`;
+  const labs = [];
+  for (let lon = Math.ceil(lo0 / step) * step; lon <= lo1; lon += step) {
+    ctx.beginPath(); let top = null;
+    for (let i = 0; i <= 24; i++) { const [px, py] = P(...llToUTM(la0 + (la1 - la0) * i / 24, lon)); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      if (top === null || py < top[1]) top = [px, py]; }
+    ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 2.5 * d; ctx.stroke(); ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1 * d; ctx.stroke();
+    const [px] = P(...llToUTM(utmToLL(...toWorld(W / 2, H - 40 * d))[0], lon));
+    labs.push([`${Math.abs(lon).toFixed(dp)}°${lon >= 0 ? 'E' : 'W'}`, px + 3 * d, H - 40 * d]);
+  }
+  for (let lat = Math.ceil(la0 / step) * step; lat <= la1; lat += step) {
+    ctx.beginPath();
+    for (let i = 0; i <= 24; i++) { const [px, py] = P(...llToUTM(lat, lo0 + (lo1 - lo0) * i / 24)); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+    ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 2.5 * d; ctx.stroke(); ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1 * d; ctx.stroke();
+    const [, py] = P(...llToUTM(lat, utmToLL(...toWorld(W - 60 * d, H / 2))[1]));
+    labs.push([`${Math.abs(lat).toFixed(dp)}°${lat >= 0 ? 'N' : 'S'}`, W - 62 * d, py - 3 * d]);
+  }
+  ctx.setLineDash([]);
+  labs.forEach(([t, x, y]) => { ctx.lineWidth = 3 * d; ctx.strokeStyle = 'rgba(0,0,0,.8)'; ctx.strokeText(t, x, y);
+    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillText(t, x, y); });
+  ctx.restore();
+}
+cv.addEventListener('mousemove', e => {
+  if (!V) return;
+  const rect = cv.getBoundingClientRect(), [lat, lon] = utmToLL(...toWorld((e.clientX - rect.left) * D(), (e.clientY - rect.top) * D()));
+  document.getElementById('coords').textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}  (${fmtDeg(lat, lon, 4)})`;
+});
+
 const P = (x, y) => [(x - V.cx) / V.mpp + cv.width / 2, (V.cy - y) / V.mpp + cv.height / 2];
 const toWorld = (px, py) => [V.cx + (px - cv.width / 2) * V.mpp, V.cy - (py - cv.height / 2) * V.mpp];
 const mPx = m => m / V.mpp;
@@ -391,9 +481,10 @@ function draw() {
     const [x0, y0] = P(R.left, R.top), [x1, y1] = P(R.right, R.bottom);
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high"; ctx.drawImage(region, x0, y0, x1 - x0, y1 - y0);
   }
-  if (!S.active) { drawPlaces(); drawPick(); scalebar(); return; }   // no search yet: just the map
+  if (!S.active) { drawLatLonGrid(); drawPlaces(); drawPick(); scalebar(); return; }   // no search yet: just the map
   if (document.getElementById('t-hill').checked) drawGridImage(base, 1);
   if (document.getElementById('t-heat').checked) drawGridImage(heat, 1);
+  drawLatLonGrid();
   const c = S.corners, mid = [(c.ne[0] + c.sw[0]) / 2, (c.ne[1] + c.sw[1]) / 2];
   if (mPx(12000) < 150 * d) {                               // zoomed far out: a pin instead of a box
     const [x, y] = P(...mid);
