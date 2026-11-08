@@ -32,7 +32,7 @@ Existing Python files are hardlinked into the install, so a new process picks th
 - Station headings in these notes are clockwise from the first cloud. The log yaw is the opposite sign: clockwise degrees = `-yaw` from a `HOLD` line.
 - The map origin is the first cloud. +X is that lidar's forward, +Y is its left, +Z is up. The base does not roll.
 - `extend_map:=false` localizes without writing the map. A mapping launch with no `map_path` paints a new grid and rewrites `src/lidar_tilt/maps/room_grid.npz` and `room_cloud.ply`.
-- Clouds and grids under `src/lidar_tilt/maps/` are gitignored.
+- Saved room clouds and grids under `src/lidar_tilt/maps/` are tracked. `room_cloud.ply`, `room_cloud_partial.ply`, and `live_scan.ply` are live sweep files and stay gitignored.
 
 ## Flash
 

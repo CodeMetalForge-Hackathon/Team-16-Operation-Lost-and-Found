@@ -15,8 +15,8 @@ thermal/fusion_calib.json
 thermal/fusion_weights.json
 
 firmware/**/.pio/
-src/lidar_tilt/maps/*.ply
-src/lidar_tilt/maps/*.npz
-src/lidar_tilt/maps/**/*.ply
-src/lidar_tilt/maps/**/*.npz
+# Live sweep output. These files are overwritten while localizing.
+src/lidar_tilt/maps/room_cloud.ply
+src/lidar_tilt/maps/room_cloud_partial.ply
+src/lidar_tilt/maps/live_scan.ply
 df-log.jsonl
