@@ -13,7 +13,7 @@ Every phone-detect hit lands here, split by category. `rf_hub.py`
 | `cellular.jsonl` | rf hits from the Pluto (`hz`, `power_db`, `pose`) |
 | `wifi.jsonl` | `kind: "wifi-probe"` / `"wifi-assoc"` (Alfa monitor) |
 
-## Live ports (127.0.0.1 only, localhost; no external access)
+## Live ports (bound to all interfaces; remote machines can connect)
 
 | Port | Category |
 |---|---|
@@ -25,7 +25,7 @@ Every phone-detect hit lands here, split by category. `rf_hub.py`
 Each port streams new hits as JSON lines the moment the hub ingests
 them. Example client:
 
-    nc 127.0.0.1 8092
+    nc 192.168.8.163 8092
 
 Streams are **live only**: a client sees hits arriving after it
 connects, never history. Multiple clients per port are fine.

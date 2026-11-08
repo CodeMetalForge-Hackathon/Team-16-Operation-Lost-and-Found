@@ -4,10 +4,10 @@
 Tails the pipeline logs (monitor_hits.jsonl, rf_hits.jsonl) and fans
 out by record kind into --dir (default ~/rfhits):
 
-  kind bt                 -> bt_classic.jsonl   127.0.0.1:8091  cat "bt"
-  kind ble                -> ble.jsonl          127.0.0.1:8092  cat "ble"
-  hz, no kind (rf file)   -> cellular.jsonl     127.0.0.1:8093  cat "cell"
-  kind wifi-probe/assoc   -> wifi.jsonl         127.0.0.1:8094  cat "wifi"
+  kind bt                 -> bt_classic.jsonl   0.0.0.0:8091  cat "bt"
+  kind ble                -> ble.jsonl          0.0.0.0:8092  cat "ble"
+  hz, no kind (rf file)   -> cellular.jsonl     0.0.0.0:8093  cat "cell"
+  kind wifi-probe/assoc   -> wifi.jsonl         0.0.0.0:8094  cat "wifi"
 
 Any other kind (coax-window, unknown) is ignored: not written, not
 streamed. Output line = source record + "t_ns" (hub-ingest nanoseconds)
@@ -21,6 +21,7 @@ never opens the Pluto.
 import argparse
 import json
 import os
+import socket
 import socketserver
 import sys
 import threading
@@ -52,7 +53,7 @@ Every phone-detect hit lands here, split by category. `rf_hub.py`
 | `cellular.jsonl` | rf hits from the Pluto (`hz`, `power_db`, `pose`) |
 | `wifi.jsonl` | `kind: "wifi-probe"` / `"wifi-assoc"` (Alfa monitor) |
 
-## Live ports (127.0.0.1 only, localhost; no external access)
+## Live ports (bound to all interfaces; remote machines can connect)
 
 | Port | Category |
 |---|---|
@@ -64,7 +65,7 @@ Every phone-detect hit lands here, split by category. `rf_hub.py`
 Each port streams new hits as JSON lines the moment the hub ingests
 them. Example client:
 
-    nc 127.0.0.1 8092
+    nc 192.168.8.163 8092
 
 Streams are **live only**: a client sees hits arriving after it
 connects, never history. Multiple clients per port are fine.
@@ -119,6 +120,8 @@ def route(rec):
 class Broadcaster:
     """Append lines to one category file; push each to its TCP clients."""
 
+    SEND_TIMEOUT = 5.0  # drop a client whose send stalls this long
+
     def __init__(self, path, max_bytes):
         self.max_bytes = max_bytes
         self.lock = threading.Lock()
@@ -133,14 +136,19 @@ class Broadcaster:
             if self.f.tell() >= self.max_bytes:
                 self.f.truncate(0)  # purge in place (same inode)
                 self.f.seek(0)
-            dead = []
-            for sock in self.clients:
-                try:
-                    sock.sendall(data)
-                except OSError:
-                    dead.append(sock)
+            clients = list(self.clients)  # snapshot; send outside the lock
+        dead = []
+        for sock in clients:
+            try:
+                sock.sendall(data)
+            except OSError:  # closed, or SEND_TIMEOUT on a stalled reader
+                dead.append(sock)
+        if dead:
+            with self.lock:
+                for sock in dead:
+                    if sock in self.clients:
+                        self.clients.remove(sock)
             for sock in dead:
-                self.clients.remove(sock)
                 try:
                     sock.close()
                 except OSError:
@@ -161,10 +169,15 @@ class Handler(socketserver.BaseRequestHandler):
 
     def handle(self):
         bcast = self.server.broadcaster
+        self.request.settimeout(bcast.SEND_TIMEOUT)
         bcast.add(self.request)
         try:
-            while self.request.recv(4096) != b"":
-                pass
+            while True:
+                try:
+                    if self.request.recv(4096) == b"":
+                        break
+                except socket.timeout:
+                    continue  # idle is fine; publish() bounds the send
         except OSError:
             pass
         finally:
@@ -200,7 +213,7 @@ def main():
     bcasts = {}
     servers = []
     for cat, fname, port in CATS:
-        srv = Server(("127.0.0.1", port), Handler)
+        srv = Server(("0.0.0.0", port), Handler)
         srv.broadcaster = Broadcaster(os.path.join(outdir, fname),
                                       int(args.max_mb * 1024 * 1024))
         bcasts[cat] = srv.broadcaster
