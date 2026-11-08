@@ -1,22 +1,34 @@
-# Team 16 DF beacon (ESP32-S3)
+# Team 16 DF beacon
 
-A homing beacon for search and rescue. The ESP32-S3 transmits a steady, recognisable 2.4 GHz signal on
-**one fixed channel (Wi-Fi channel 11)** so rescuers can direction-find to it.
+A homing beacon for search and rescue. It transmits steady, recognisable signals so rescuers can
+direction-find to it. Receive side is receive-only (SDR or a second LoRa board).
 
-- **Wi-Fi:** raw 802.11 beacon frames, 50 per second, SSID `TEAM16-DF`, channel 11 (2462 MHz).
-- **BLE:** advertising every 20 ms under the name `TEAM16-DF`.
-- Settings live in `platformio.ini` (`BEACON_CHANNEL`, `BEACON_RATE_HZ`, `BEACON_SSID`, `ENABLE_BLE`).
-- It never hops channels and never joins a network. Do not add an amplifier or high-gain antenna to the
-  transmitter; stock power is within the unlicensed limits.
+| Board | Environment | Signals |
+|---|---|---|
+| **LilyGO LoRa32 915 MHz** (ESP32-PICO-D4 + SX1276), the field unit | `esp32-pico` | **LoRa 915 MHz** (main, long range), Wi-Fi ch 11, BLE |
+| Same board as a receiver | `esp32-pico-rx` | listens on LoRa, prints RSSI/SNR of each beacon |
+| ESP32-S3 dev board (first prototype) | `esp32s3` | Wi-Fi ch 11, BLE |
+
+- **LoRa:** one packet per second (`T16DF,<id>,<seq>,<uptime s>`), 915 MHz, SF10, BW125 kHz, 17 dBm.
+  Sub-GHz passes through foliage far better than 2.4 GHz, so this is the signal to search for.
+  Packet loss shows up as gaps in `<seq>`.
+- **Wi-Fi:** raw 802.11 beacon frames, 50/s, SSID `TEAM16-DF`, channel 11 (2462 MHz). Phone-testable.
+- **BLE:** advertising every 20 ms as `TEAM16-DF`. Phone-testable.
+- Settings (frequency, SF, power, channel, which signals are on) are the `-D` flags in `platformio.ini`.
+- **Attach the 915 MHz antenna before powering the board.** Keep power within your country's limits.
 
 ## Build and flash
 
 ```
 pip install platformio            # use Python 3.12 or older
-pio run                           # build
-pio run -t upload --upload-port COM6
-pio device monitor -p COM6        # shows MAC, channel and "beacons sent N"
+pio run -e esp32-pico -t upload --upload-port COM7
+pio device monitor -p COM7        # shows "lora sent N" rising once per second
 ```
+
+For a receiver, flash a second board with `-e esp32-pico-rx`. Pins are the LilyGO T3 V1.6.1 layout
+(SCK 5, MISO 19, MOSI 27, CS 18, RST 23, DIO0 26); change them in `platformio.ini` for other variants.
+
+A phone cannot receive LoRa (no LoRa radio). The Wi-Fi and BLE tests below only check the 2.4 GHz side.
 
 ## Test it with your phone (as the receiver)
 

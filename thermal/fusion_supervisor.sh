@@ -16,9 +16,10 @@ LOG=../fusion.log
 P=""
 
 say() { echo "[supervisor $(date '+%F %T')] $*" >> "$LOG"; }
-kill_child() {  # polite first (releases Hailo cleanly), then force
+RESTART_EVERY=${FUSION_RESTART_SECS:-600}  # scheduled clean restart (cameras + Hailo), 0 = off. Costs ~20 s of video.
+kill_child() {  # polite first (releases Hailo cleanly), then force. $1 = "quiet" skips the stack dump
   [ -n "$P" ] && kill -0 "$P" 2>/dev/null || return 0
-  kill -USR1 "$P" 2>/dev/null; sleep 1       # stack dump into the log for diagnosis
+  [ "$1" = quiet ] || { kill -USR1 "$P" 2>/dev/null; sleep 1; }   # stack dump into the log for diagnosis
   kill "$P" 2>/dev/null
   for i in $(seq 1 20); do kill -0 "$P" 2>/dev/null || return 0; sleep 0.5; done
   say "child ignored SIGTERM, sending SIGKILL"
@@ -36,6 +37,11 @@ while true; do
   while kill -0 "$P" 2>/dev/null; do
     sleep 2
     NOW=$(date +%s)
+    if [ "$RESTART_EVERY" -gt 0 ] && [ $((NOW - START)) -ge "$RESTART_EVERY" ]; then
+      say "scheduled restart after ${RESTART_EVERY}s"
+      kill_child quiet
+      break
+    fi
     [ $((NOW - START)) -lt $GRACE ] && continue
     M=$(stat -c %Y "$STATUS" 2>/dev/null || echo 0)
     if [ $((NOW - M)) -gt $STALE ]; then
