@@ -128,6 +128,19 @@ Watch a launch log for the next held pose (the script prints nothing until the p
 python3 /home/alex/Desktop/Hackathon_Code/.grok/skills/room-localization/scripts/watch_pose.py LAUNCH.log
 ```
 
+## Dashboard map
+
+Optional. Add `dashboard:=true` to the localize launch. The node listens on `0.0.0.0:8086` and posts the same JSON to the Pi at `http://192.168.8.163:8086/map`. The Pi side is `dashboard/map_feed.py`.
+
+```bash
+ros2 launch lidar_tilt localize.launch.py \
+  map_path:=/home/alex/Desktop/Hackathon_Code/src/lidar_tilt/maps/ROOM/ROOM.npz \
+  extend_map:=false \
+  dashboard:=true
+```
+
+`GET /map` is the current JSON. `GET /events` sends one JSON message each time the rig moves by about 10 cm or 2°. The picture is top-down. `col` increases with +X, forward of the first cloud, to the right. `row` decreases with +Y, left of the first cloud, so left is toward the top. `origin` is that first cloud in meters and in pixels. `outline` is the wall pixels `[col, row]`. `pose.px` and `pose.py` use the same frame, `pose.yaw_cw_deg` is clockwise, and `pose.heading_px` is a unit arrow as `[dcol, drow]`. `pose` is null until the first fix.
+
 ## Stop with the head level
 
 A one-station sweep already parks at 0°.

@@ -125,7 +125,8 @@ class Esp32Tilt:
             if len(parts) == 2 and parts[0] == "AT":
                 acked = float(parts[1])
                 if abs(acked - degrees) > 0.2:
-                    raise RuntimeError(f"acked {acked} for commanded {degrees}")
+                    # A late ack from the previous step is still in the buffer.
+                    continue
                 return acked
         raise TimeoutError(f"no AT for {degrees:.1f}")
 

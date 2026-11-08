@@ -22,6 +22,11 @@ def generate_launch_description():
             DeclareLaunchArgument("rviz", default_value="true"),
             DeclareLaunchArgument("map_path", default_value=""),
             DeclareLaunchArgument("extend_map", default_value="true"),
+            DeclareLaunchArgument("dashboard", default_value="false"),
+            DeclareLaunchArgument("dashboard_port", default_value="8086"),
+            DeclareLaunchArgument(
+                "dashboard_url", default_value="http://192.168.8.163:8086/map"
+            ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(sllidar_launch),
                 launch_arguments={
@@ -49,6 +54,26 @@ def generate_launch_description():
                         "extend_map": ParameterValue(
                             LaunchConfiguration("extend_map"), value_type=bool
                         ),
+                    }
+                ],
+            ),
+            Node(
+                package="lidar_tilt",
+                executable="map_dashboard",
+                name="map_dashboard",
+                output="screen",
+                condition=IfCondition(LaunchConfiguration("dashboard")),
+                parameters=[
+                    {
+                        "map_path": LaunchConfiguration("map_path"),
+                        "extend_map": ParameterValue(
+                            LaunchConfiguration("extend_map"), value_type=bool
+                        ),
+                        "host": "0.0.0.0",
+                        "port": ParameterValue(
+                            LaunchConfiguration("dashboard_port"), value_type=int
+                        ),
+                        "post_url": LaunchConfiguration("dashboard_url"),
                     }
                 ],
             ),

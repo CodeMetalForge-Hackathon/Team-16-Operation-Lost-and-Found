@@ -46,7 +46,9 @@ def stitch(paths: list[Path]) -> tuple[np.ndarray, OccupancyGrid, list[tuple[str
     poses = [(paths[0].stem, Pose())]
     for path, cloud in zip(paths[1:], clouds[1:]):
         pose, fraction, rms, count = recover_pose(index, cloud, field)
-        if not (count >= 40 and fraction >= 0.80 and rms <= 0.10):
+        # A new station still sees walls the map does not have yet, so this is
+        # looser than a live fix against a finished map.
+        if not (count >= 40 and fraction >= 0.55 and rms <= 0.10):
             raise RuntimeError(
                 f"{path.name} did not lock "
                 f"inliers={fraction:.2f} rms={rms:.3f} count={count}"

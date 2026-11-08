@@ -1,0 +1,5 @@
+left3ft_ccw45
+user: about 3 feet to the left and -45 degrees
+x_m 0
+y_m 0.914
+yaw_cw_deg -45

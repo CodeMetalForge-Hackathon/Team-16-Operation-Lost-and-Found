@@ -29,6 +29,7 @@ setup(
         "console_scripts": [
             "tilt_sweep = lidar_tilt.tilt_sweep:main",
             "cloud_localize = lidar_tilt.cloud_localize:main",
+            "map_dashboard = lidar_tilt.map_dashboard:main",
             "check_register = lidar_tilt.check_register:main",
         ],
     },
