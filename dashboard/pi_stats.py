@@ -178,7 +178,8 @@ def hailo_info():
     try:
         age = time.time() - os.stat(STATUS).st_mtime
         st = json.loads(read(STATUS, "{}") or "{}")
-        det = {"age_s": round(age, 1), "fps": st.get("fps"), "ok": age < 8}
+        det = {"age_s": round(age, 1), "fps": st.get("fps"), "ok": age < 8, "ai": st.get("ai"),
+               "ai_stalls_15min": st.get("ai_stalls_15min")}
     except (OSError, ValueError):
         det = {"age_s": None, "fps": None, "ok": False}
     link = None

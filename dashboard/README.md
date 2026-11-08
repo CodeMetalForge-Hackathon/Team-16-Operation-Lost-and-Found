@@ -21,9 +21,9 @@ Start the feeds on the Pi (each has a `start_*.sh` and `stop_*.sh`, read-only ap
 
     ./start_sdr_feed.sh
     ./start_pi_stats.sh
-    python3 map_feed.py
+    ./start_map_feed.sh
 
-The Pi starts the dashboard, the SDR feed, the INS, the stats feed and the detector at boot from its crontab (`@reboot` with a short sleep each). `map_feed.py` is not started at boot.
+The Pi starts the dashboard, the SDR feed, the INS, the stats feed, the map feed and the detector at boot from its crontab (`@reboot` with a short sleep each). The map feed runs in a small loop so it restarts itself if it exits.
 
 When it is time to host the dashboard on the Pi, copy this directory there and
 run:
@@ -31,3 +31,5 @@ run:
     python3 serve.py --host 0.0.0.0 --port 8090
 
 When opened from the Pi-hosted address, the dashboard uses that same host for every panel. Open the Pi's own address over plain http. A page served over https cannot call the Pi's http feeds.
+
+The page is plain light by default and follows the system dark setting. All colors are tokens at the top of `styles.css`.

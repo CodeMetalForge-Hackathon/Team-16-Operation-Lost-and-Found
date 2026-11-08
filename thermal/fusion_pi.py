@@ -543,7 +543,7 @@ def main():
             poll_commands()
             if now - t_status >= 0.3:
                 t_status = now
-                publish_status({"fps": round(fps, 1), "t": now, "ai": ai})
+                publish_status({"fps": round(fps, 1), "t": now, "ai": ai, "ai_stalls_15min": getattr(hailo, "stalls_recent", 0)})
             publish("fused", fused_img)
             publish("thermal", thermal_img)
             if any(t["kind"] in ("HUMAN", "THERMAL ONLY") for t in targets):

@@ -222,9 +222,9 @@ function drawChart(canvas, points, opts) {
   const [lo, hi] = opts.range;
   const x = (t) => padL + ((t - (now - span)) / span) * pw;
   const y = (v) => padT + (1 - (Math.min(Math.max(v, lo), hi) - lo) / (hi - lo)) * ph;
-  g.font = "10px ui-monospace, monospace";
+  g.font = "10px system-ui, sans-serif";
   g.fillStyle = cssVar("--muted");
-  g.strokeStyle = "rgba(148,180,169,0.14)";
+  g.strokeStyle = cssVar("--grid");
   g.lineWidth = 1;
   const step = opts.step;
   for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
@@ -402,8 +402,8 @@ function drawInsPlot(d) {
   const scale = Math.min(w, h) / span;
   const X = (e) => w / 2 + (e - cx) * scale, Y = (n) => h / 2 - (n - cy) * scale;
   const nice = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000].find((s) => s * scale > 48) || 5000;
-  g.font = "10px ui-monospace, monospace";
-  g.strokeStyle = "rgba(148,180,169,0.14)"; g.fillStyle = cssVar("--muted"); g.lineWidth = 1;
+  g.font = "10px system-ui, sans-serif";
+  g.strokeStyle = cssVar("--grid"); g.fillStyle = cssVar("--muted"); g.lineWidth = 1;
   for (let e = Math.ceil((cx - w / 2 / scale) / nice) * nice; e < cx + w / 2 / scale; e += nice) {
     g.beginPath(); g.moveTo(X(e), 0); g.lineTo(X(e), h); g.stroke(); g.fillText(e + " m", X(e) + 3, h - 4);
   }
@@ -414,7 +414,7 @@ function drawInsPlot(d) {
   pts.forEach((p, i) => (i ? g.lineTo(X(p[0]), Y(p[1])) : g.moveTo(X(p[0]), Y(p[1]))));
   g.stroke();
   if (sig > 0) {
-    g.strokeStyle = "rgba(255,189,91,0.6)"; g.setLineDash([4, 4]);
+    g.strokeStyle = cssVar("--amber"); g.setLineDash([4, 4]);
     g.beginPath(); g.arc(X(cur[0]), Y(cur[1]), Math.max(2, sig * scale), 0, 6.3); g.stroke(); g.setLineDash([]);
   }
   g.fillStyle = cssVar("--green"); g.beginPath(); g.arc(X(0), Y(0), 5, 0, 6.3); g.fill();
@@ -548,15 +548,23 @@ function renderPi(d) {
   setTile(piEls.hailo, hl.on_bus ? "On bus" + (hl.link ? " (" + hl.link + ")" : "") : "MISSING from the bus", hl.on_bus ? "good" : "bad");
   if (!det || det.age_s == null) setTile(piEls.det, "not running", "bad");
   else if (!det.ok) setTile(piEls.det, "STALLED " + det.age_s.toFixed(0) + " s", "bad");
+  else if (det.ai && det.ai !== "ready") setTile(piEls.det, "AI " + det.ai + " (video live)", "warn");
   else setTile(piEls.det, (det.fps != null ? det.fps + " fps" : "running") + (sup.hailo_unavailable ? " (no Hailo)" : ""), sup.hailo_unavailable ? "warn" : "good");
   const r = sup.watchdogs_15min;
-  setTile(piEls.restarts, r == null ? "—" : r + " stall" + (r === 1 ? "" : "s") + ", " + sup.starts_15min + " starts", r > 2 ? "bad" : r > 0 ? "warn" : "good");
+  const as = det && det.ai_stalls_15min;
+  setTile(piEls.restarts, as == null ? "—" : as + " AI stall" + (as === 1 ? "" : "s") + (r ? ", " + r + " restart" + (r === 1 ? "" : "s") : ""), r > 0 || as > 10 ? "bad" : as > 0 ? "warn" : "good");
   setTile(piEls.cell, d.cell_scan_running ? "RUNNING" : "off", d.cell_scan_running ? "warn" : "");
   setTile(piEls.up, fmtDuration(d.uptime_s));
   piEls.cores.replaceChildren();
   d.cpu.cores.forEach((c, i) => {
     const li = document.createElement("li");
-    li.textContent = "core " + i + "  " + "█".repeat(Math.round(c / 5)) + "  " + c.toFixed(0) + " %";
+    const label = document.createElement("span"); label.textContent = "Core " + i;
+    const track = document.createElement("span"); track.className = "bar";
+    const fill = document.createElement("i"); fill.style.width = Math.min(100, c) + "%";
+    if (c > 90) fill.className = "hot";
+    track.append(fill);
+    const val = document.createElement("span"); val.textContent = c.toFixed(0) + " %";
+    li.append(label, track, val);
     piEls.cores.append(li);
   });
   piEls.top.replaceChildren();
@@ -571,7 +579,8 @@ function renderPi(d) {
   const issues = [];
   if (!hl.on_bus) issues.push("the Hailo chip is not on the PCIe bus (needs a power-cycle)");
   if (det && !det.ok) issues.push("the detector is stalled");
-  if (sup.watchdogs_15min > 2) issues.push("the detector has stalled " + sup.watchdogs_15min + " times in 15 min");
+  if (sup.watchdogs_15min > 2) issues.push("the detector has had to be restarted " + sup.watchdogs_15min + " times in 15 min");
+  if (det && det.ai_stalls_15min > 3) issues.push("the AI chip has stalled " + det.ai_stalls_15min + " times in 15 min (the video stays live, the boxes drop out for a few seconds)");
   if (t && t.now.length) issues.push("the Pi is " + t.now.join(" and "));
   if (hl.driver_errors) issues.push(hl.driver_errors + " Hailo driver error" + (hl.driver_errors === 1 ? "" : "s") + " since boot");
   piEls.note.className = "cal-status" + (issues.length ? " bad" : "");
@@ -644,7 +653,7 @@ function drawMap() {
   g.scale(dpr, dpr);
   g.clearRect(0, 0, w, h);
   if (!d || !d.width || !d.height) {
-    g.fillStyle = cssVar("--muted"); g.font = "13px ui-monospace, monospace";
+    g.fillStyle = cssVar("--muted"); g.font = "13px system-ui, sans-serif";
     g.fillText("Waiting for the lidar laptop to post a map…", 16, 28);
     return;
   }
@@ -661,12 +670,12 @@ function drawMap() {
   const sx = (xm, ym) => { const r = rotPt(xm, ym); return left + (r[0] - x0) * scale; };
   const sy = (xm, ym) => { const r = rotPt(xm, ym); return top + (y1 - r[1]) * scale; };
   const cell = mpp * scale;
-  g.strokeStyle = "rgba(148,180,169,0.2)"; g.strokeRect(left, top, (x1 - x0) * scale, (y1 - y0) * scale);
-  g.strokeStyle = "rgba(148,180,169,0.12)"; g.fillStyle = cssVar("--muted"); g.font = "10px ui-monospace, monospace";
+  g.strokeStyle = cssVar("--grid"); g.strokeRect(left, top, (x1 - x0) * scale, (y1 - y0) * scale);
+  g.strokeStyle = cssVar("--grid"); g.fillStyle = cssVar("--muted"); g.font = "10px system-ui, sans-serif";
   for (let e = Math.ceil(X0); e <= X1; e++) { g.beginPath(); g.moveTo(sx(e, Y0), sy(e, Y0)); g.lineTo(sx(e, Y1), sy(e, Y1)); g.stroke(); }
   for (let n = Math.ceil(Y0); n <= Y1; n++) { g.beginPath(); g.moveTo(sx(X0, n), sy(X0, n)); g.lineTo(sx(X1, n), sy(X1, n)); g.stroke(); }
   g.fillText("1 m grid", left + 4, top + (y1 - y0) * scale - 4);
-  g.fillStyle = "rgba(237,247,243,0.85)";
+  g.fillStyle = cssVar("--map-cell");
   const sz = Math.max(1.5, cell);
   for (const [col, row] of d.outline || []) {
     const xm = (col - ox + 0.5) * mpp, ym = (oy - row - 0.5) * mpp;   // cell centre, metres

@@ -7,6 +7,7 @@ killed and a fresh one is started. A worker that dies or cannot open the chip is
 """
 import multiprocessing as mp
 import time
+from collections import deque
 
 TIMEOUT = 2.0          # a normal inference takes well under 0.1 s
 RESTART_AFTER = 6.0    # stalled this long: kill the worker and start another
@@ -60,6 +61,7 @@ class HailoProxy:
         self.state = "starting"      # starting | ready | stalled | dead
         self.t_spawn = self.t_busy = self.t_dead = 0.0
         self.restarts = 0
+        self.stall_times = deque(maxlen=500)   # when the AI stopped answering, for the dashboard
         self._spawn()
 
     # ---- process management
@@ -140,8 +142,15 @@ class HailoProxy:
                 return kind[1]
             return EMPTY
         self.state = "stalled"
+        self.stall_times.append(time.time())
         print(f"hailo worker: no answer in {TIMEOUT:.0f}s - video continues without AI", flush=True)
         return EMPTY
+
+    @property
+    def stalls_recent(self):
+        """AI stalls in the last 15 minutes."""
+        cut = time.time() - 900
+        return sum(1 for t in self.stall_times if t >= cut)
 
     def close(self):
         try:

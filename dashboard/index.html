@@ -11,7 +11,7 @@
   <main class="shell">
     <header class="topbar">
       <div>
-        <p class="eyebrow">OPERATION LOST &amp; FOUND</p>
+        <p class="eyebrow">Operation Lost &amp; Found</p>
         <h1>Sensor Pod <span>Live View</span></h1>
       </div>
       <div class="system-state" aria-live="polite">
@@ -34,7 +34,7 @@
       <article class="screen-card" data-screen="fused" data-port="8081">
         <header class="card-header">
           <div>
-            <p class="card-kicker">FUSED · VISIBLE + THERMAL</p>
+            <p class="card-kicker">Fused: visible + thermal</p>
             <h2>Combined human detection</h2>
           </div>
           <span class="feed-state" data-state="idle">Idle</span>
@@ -49,7 +49,7 @@
         </div>
         <p class="cal-status" id="cal-status" role="status" aria-live="polite">Alignment: unknown until connected</p>
         <footer class="card-footer">
-          <span class="endpoint">SCREEN 01 · :8081</span>
+          <span class="endpoint">Screen 1 · port 8081</span>
           <div class="actions">
             <button type="button" class="calibrate" data-action="recalibrate">Recalibrate</button>
             <button type="button" data-action="retry">Retry</button>
@@ -62,7 +62,7 @@
       <article class="screen-card" data-screen="thermal" data-port="8082">
         <header class="card-header">
           <div>
-            <p class="card-kicker">THERMAL CAMERA</p>
+            <p class="card-kicker">Thermal camera</p>
             <h2>Thermal view</h2>
           </div>
           <span class="feed-state" data-state="idle">Idle</span>
@@ -76,7 +76,7 @@
           </div>
         </div>
         <footer class="card-footer">
-          <span class="endpoint">SCREEN 02 · :8082</span>
+          <span class="endpoint">Screen 2 · port 8082</span>
           <div class="actions">
             <button type="button" data-action="retry">Retry</button>
             <button type="button" data-action="open">Open</button>
@@ -89,7 +89,7 @@
     <section class="beacon-card" id="pi-card" aria-label="Raspberry Pi health">
       <header class="card-header">
         <div>
-          <p class="card-kicker">RASPBERRY PI · HEALTH</p>
+          <p class="card-kicker">Raspberry Pi health</p>
           <h2>CPU, Hailo &amp; detector</h2>
         </div>
         <span class="feed-state" id="pi-state" data-state="idle">Idle</span>
@@ -102,7 +102,7 @@
         <div class="tile"><span class="tile-label">Power / throttling</span><strong id="p-thr">&mdash;</strong></div>
         <div class="tile"><span class="tile-label">Hailo chip</span><strong id="p-hailo">&mdash;</strong></div>
         <div class="tile"><span class="tile-label">Detector</span><strong id="p-det">&mdash;</strong></div>
-        <div class="tile"><span class="tile-label">Detector restarts (15 min)</span><strong id="p-restarts">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">AI stalls (15 min)</span><strong id="p-restarts">&mdash;</strong></div>
         <div class="tile"><span class="tile-label">Cellular scan (Pluto)</span><strong id="p-cell">&mdash;</strong></div>
         <div class="tile"><span class="tile-label">Uptime</span><strong id="p-up">&mdash;</strong></div>
       </div>
@@ -124,7 +124,7 @@
       </div>
       <p class="cal-status" id="pi-note" role="status" aria-live="polite">Pi stats: unknown until connected</p>
       <footer class="card-footer">
-        <span class="endpoint">PI STATS · :8087</span>
+        <span class="endpoint">Pi stats · port 8087</span>
         <div class="actions"><button type="button" id="pi-retry">Retry</button></div>
       </footer>
     </section>
@@ -132,7 +132,7 @@
     <section class="beacon-card" id="sdr-card" aria-label="SDR phone detection">
       <header class="card-header">
         <div>
-          <p class="card-kicker">SDR · RECEIVE-ONLY PHONE DETECT</p>
+          <p class="card-kicker">Radio (receive-only)</p>
           <h2>Phone &amp; device contacts</h2>
         </div>
         <span class="feed-state" id="sdr-state" data-state="idle">Idle</span>
@@ -165,7 +165,7 @@
       </div>
       <p class="cal-status" id="sdr-note" role="status" aria-live="polite">SDR feed: unknown until connected</p>
       <footer class="card-footer">
-        <span class="endpoint">SDR FEED · :8085 (reads the rf hub on the Pi)</span>
+        <span class="endpoint">Radio feed · port 8085 (reads the RF hub on the Pi)</span>
         <div class="actions"><button type="button" id="sdr-retry">Retry</button></div>
       </footer>
     </section>
@@ -173,7 +173,7 @@
     <section class="ins-card" id="map-card" aria-label="Lidar room map and position">
       <header class="card-header">
         <div>
-          <p class="card-kicker">LIDAR · ROOM MAP</p>
+          <p class="card-kicker">Lidar room map</p>
           <h2>Where we are in the room</h2>
         </div>
         <span class="feed-state" id="map-state" data-state="idle">Idle</span>
@@ -186,12 +186,12 @@
         <div class="tile"><span class="tile-label">Distance walked</span><strong id="m-dist">&mdash;</strong></div>
       </div>
       <figure class="ins-plot">
-        <figcaption>Top-down map, lidar positions only <small>(green = origin, red = now, cyan = track) <span id="map-rot-note"></span></small></figcaption>
+        <figcaption>Top-down map, lidar positions only <small>(green = origin, red = now, blue = track) <span id="map-rot-note"></span></small></figcaption>
         <canvas id="c-map" role="img" aria-label="Lidar room map with position track"></canvas>
       </figure>
       <p class="cal-status" id="map-note" role="status" aria-live="polite">Map feed: unknown until connected</p>
       <footer class="card-footer">
-        <span class="endpoint">MAP FEED · :8086 (lidar laptop posts here)</span>
+        <span class="endpoint">Map feed · port 8086 (the lidar laptop posts here)</span>
         <div class="actions"><button type="button" id="map-rotate">Rotate map</button><button type="button" id="map-clear">Clear track</button><button type="button" id="map-retry">Retry</button></div>
       </footer>
     </section>
@@ -199,7 +199,7 @@
     <section class="ins-card" id="ins-card" aria-label="Drone position, dead reckoning">
       <header class="card-header">
         <div>
-          <p class="card-kicker">DRONE · INS DEAD RECKONING</p>
+          <p class="card-kicker">Inertial position (dead reckoning)</p>
           <h2>Position without GPS</h2>
         </div>
         <span class="feed-state" id="ins-state" data-state="idle">Idle</span>
@@ -249,13 +249,13 @@
         <canvas id="c-ins" role="img" aria-label="Dead reckoning track"></canvas>
       </figure>
       <footer class="card-footer">
-        <span class="endpoint">INS SERVICE · :8084</span>
+        <span class="endpoint">Inertial service · port 8084</span>
         <div class="actions"><button type="button" id="ins-retry">Retry</button></div>
       </footer>
     </section>
 
     <footer class="page-footer">
-      <span>TEAM 16 · EDGE SENSOR CONSOLE</span>
+      <span>Team 16 · sensor console</span>
       <span id="clock" aria-label="Local time"></span>
     </footer>
   </main>
