@@ -21,6 +21,10 @@ def generate_launch_description():
             DeclareLaunchArgument("lidar_port", default_value="/dev/ttyUSB0"),
             DeclareLaunchArgument("rviz", default_value="true"),
             DeclareLaunchArgument("continuous", default_value="true"),
+            DeclareLaunchArgument("start_at_zero", default_value="false"),
+            DeclareLaunchArgument("park_at_zero", default_value="false"),
+            DeclareLaunchArgument("output_ply", default_value=""),
+            DeclareLaunchArgument("passes", default_value="1"),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(sllidar_launch),
                 launch_arguments={
@@ -40,6 +44,16 @@ def generate_launch_description():
                         "port": LaunchConfiguration("esp_port"),
                         "continuous": ParameterValue(
                             LaunchConfiguration("continuous"), value_type=bool
+                        ),
+                        "start_at_zero": ParameterValue(
+                            LaunchConfiguration("start_at_zero"), value_type=bool
+                        ),
+                        "park_at_zero": ParameterValue(
+                            LaunchConfiguration("park_at_zero"), value_type=bool
+                        ),
+                        "output_ply": LaunchConfiguration("output_ply"),
+                        "passes": ParameterValue(
+                            LaunchConfiguration("passes"), value_type=int
                         ),
                     }
                 ],

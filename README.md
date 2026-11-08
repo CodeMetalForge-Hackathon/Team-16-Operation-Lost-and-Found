@@ -142,7 +142,9 @@ To run it on the Pi and watch from your PC, copy `picam_color_anomaly.py` to the
 
 ## RPLidar C1 tilt map
 
-The C1 stays a 2D lidar on `/dev/ttyUSB0`. A Seeed XIAO ESP32-C5 on `/dev/ttyACM0` drives a hobby servo on D0 (5V, GND, signal). `tilt_sweep` sends `GOTO <degrees>`, waits for `AT <degrees>`, then keeps the next `/scan` and pitches it into `base_link`. The horn steps from -30 to 30 degrees in 1 degree increments and travels back until you stop the launch. Each settled scan is published on `/tilt_slice`. `/tilt_cloud` keeps the latest coverage from the current spot. `cloud_localize` turns those slices into a 3D occupancy grid and a pose. Carry the upright rig to a new spot and the grid grows. Each pass rewrites `src/lidar_tilt/maps/room_grid.npz` and `room_cloud.ply`.
+The C1 stays a 2D lidar on `/dev/ttyUSB0`. A Seeed XIAO ESP32-C5 on `/dev/ttyACM0` drives one bipolar stepper through an Adafruit DC & Stepper Motor HAT on I2C (`D4` SDA, `D5` SCL, `3V3`, `GND` to the Pi header, coils on M1 and M2). Motor power is the HAT screw terminal, not the XIAO. `tilt_sweep` sends `GOTO <degrees>`, waits for `AT <degrees>`, then keeps the next `/scan` and pitches it into `base_link`. The motor steps from -60 to 60 degrees in 0.5 degree increments and travels back until you stop the launch. The pose at reset is 0 degrees, so level the lidar before reset. Each settled scan is published on `/tilt_slice`. `/tilt_cloud` keeps the latest coverage from the current spot. `cloud_localize` turns those slices into a 3D occupancy grid and a pose. Carry the upright rig to a new spot and the grid grows. Each pass rewrites `src/lidar_tilt/maps/room_grid.npz` and `room_cloud.ply`.
+
+Station capture, stitching, and live localization commands are in `src/lidar_tilt/OPERATIONS.md`.
 
 Flash the board before the first sweep. The upload port is the XIAO, not the lidar.
 
@@ -167,7 +169,7 @@ An empty `map_path` starts a new grid at the origin. To localize against a saved
 ros2 launch lidar_tilt localize.launch.py map_path:=src/lidar_tilt/maps/room_grid.npz extend_map:=false
 ```
 
-`map_path` may also be an ascii xyz PLY. The pose is `/pose_fix` in `map`, and the occupied cells are `/map_cloud`. The base stays upright: the fix is x, y, z, and yaw. Positive servo tilt pitches the laser frame about Y, which sends a forward ray toward -Z. If the cloud bends the wrong way, set `tilt_sign` to `-1.0`. Ranges closer than 0.15 m or past 12 m are dropped. `dead_min_deg` and `dead_max_deg` mask the mount. When the first number is greater than the second, the mask wraps past ±180°. Pulse width, the angle clamp, settle time, and the sweep rate are at the top of `firmware/lidar_tilt/src/main.cpp`. The horn eases between angles at about 8 degrees per second.
+`map_path` may also be an ascii xyz PLY. The pose is `/pose_fix` in `map`, and the occupied cells are `/map_cloud`. The base stays upright: the fix is x, y, z, and yaw. Positive tilt pitches the laser frame about Y. `tilt_sign` is `-1` so a forward ray moves toward +Z on this stepper. Set it back to `1.0`, or flip `kStepSign` in the firmware, if the cloud bends the wrong way. Ranges closer than 0.15 m or past 12 m are dropped. `dead_min_deg` and `dead_max_deg` mask the mount. When the first number is greater than the second, the mask wraps past ±180°. Steps per revolution, gear ratio, the angle clamp, settle time, and the sweep rate are at the top of `firmware/lidar_tilt/src/main.cpp`. The motor eases between angles at about 24 degrees per second. Coil PWM is scaled down because the hat does not limit current on a 12 V supply.
 
 ## Terrain localization
 

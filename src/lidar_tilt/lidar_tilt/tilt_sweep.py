@@ -24,7 +24,21 @@ from tf2_ros import TransformBroadcaster
 
 from lidar_tilt.tilt_math import scan_to_points
 
-DEFAULT_ANGLES = [float(angle) for angle in range(-30, 31)]
+DEFAULT_ANGLES = [angle / 2.0 for angle in range(-120, 121)]
+
+
+def angles_from_zero(span_deg: float = 60.0, step_deg: float = 0.5) -> list[float]:
+    """Start at 0, step to +span, then continue to -span. One scan per stop."""
+    steps = int(round(span_deg / step_deg))
+    upward = [index * step_deg for index in range(steps + 1)]
+    downward = [(steps - index) * step_deg for index in range(1, 2 * steps + 1)]
+    return upward + downward
+
+
+def _as_bool(value) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes")
+    return bool(value)
 
 
 def _default_ply() -> str:
@@ -100,7 +114,7 @@ class Esp32Tilt:
                 return True
         return False
 
-    def goto(self, degrees: float, timeout_s: float = 15.0) -> float:
+    def goto(self, degrees: float, timeout_s: float = 90.0) -> float:
         self._ser.write(f"GOTO {degrees:.1f}\n".encode("ascii"))
         self._ser.flush()
         deadline = time.monotonic() + timeout_s
@@ -122,7 +136,9 @@ class TiltSweep(Node):
         self.declare_parameter("port", "/dev/ttyACM0")
         self.declare_parameter("baud", 115200)
         self.declare_parameter("angles_deg", DEFAULT_ANGLES)
-        self.declare_parameter("tilt_sign", 1.0)
+        self.declare_parameter("start_at_zero", False)
+        self.declare_parameter("park_at_zero", False)
+        self.declare_parameter("tilt_sign", -1.0)
         self.declare_parameter("range_min", 0.15)
         self.declare_parameter("range_max", 12.0)
         self.declare_parameter("dead_min_deg", 180.0)
@@ -134,6 +150,7 @@ class TiltSweep(Node):
         self.declare_parameter("base_frame", "base_link")
         self.declare_parameter("output_ply", _default_ply())
         self.declare_parameter("continuous", True)
+        self.declare_parameter("passes", 1)
 
         self._tilt_sign = float(self.get_parameter("tilt_sign").value)
         self._range_min = float(self.get_parameter("range_min").value)
@@ -141,13 +158,15 @@ class TiltSweep(Node):
         self._dead_min = float(self.get_parameter("dead_min_deg").value)
         self._dead_max = float(self.get_parameter("dead_max_deg").value)
         self._base_frame = str(self.get_parameter("base_frame").value)
-        self._output = Path(str(self.get_parameter("output_ply").value))
-        self._angles = [float(item) for item in self.get_parameter("angles_deg").value]
-        continuous = self.get_parameter("continuous").value
-        if isinstance(continuous, str):
-            self._continuous = continuous.strip().lower() in ("1", "true", "yes")
+        output_ply = str(self.get_parameter("output_ply").value).strip()
+        self._output = Path(output_ply or _default_ply())
+        if _as_bool(self.get_parameter("start_at_zero").value):
+            self._angles = angles_from_zero()
         else:
-            self._continuous = bool(continuous)
+            self._angles = [float(item) for item in self.get_parameter("angles_deg").value]
+        self._park_at_zero = _as_bool(self.get_parameter("park_at_zero").value)
+        self._continuous = _as_bool(self.get_parameter("continuous").value)
+        self._passes = max(1, int(self.get_parameter("passes").value))
 
         cloud_qos = QoSProfile(
             reliability=ReliabilityPolicy.RELIABLE,
@@ -296,12 +315,20 @@ class TiltSweep(Node):
                 self.get_logger().info("Continuous sweep. Close this window to stop.")
                 link = self._sweep_forever(link)
             else:
-                link = self._run_sequence(link, self._angles)
+                passes = self._passes
+                for index in range(passes):
+                    link = self._run_sequence(link, self._angles)
+                    self.get_logger().info(f"PASS {index + 1} of {passes}")
                 count = self._save()
                 done = Int32()
                 done.data = 1
                 self._pass_pub.publish(done)
                 self.get_logger().info(f"SWEEP_OK {count} points -> {self._output}")
+                if self._park_at_zero:
+                    parked = link.goto(0.0)
+                    with self._lock:
+                        self._tilt_deg = parked
+                    self.get_logger().info(f"Parked at {parked:.1f}")
         except Exception as exc:
             self.get_logger().error(f"SWEEP_FAIL {exc}")
             with self._lock:
