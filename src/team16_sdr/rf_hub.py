@@ -66,7 +66,7 @@ flock (`/tmp/pluto-sdr-<serial6>.lock`), so both cell feeds coexist.
 |---|---|
 | `bt_classic.jsonl` | `kind: "bt"` (public-block MAC sightings, hci2) |
 | `ble.jsonl` | `kind: "ble"` (locally-administered MAC sightings) |
-| `cellular.jsonl` | rf hits from the Pluto (`hz`, `power_db`, `pose`) |
+| `cellular.jsonl` | rf hits from the Pluto (`hz`, `power_db`, `pose`); only inside US uplink allocations (tower downlink carriers dropped, even on log re-read from offset 0) |
 | `wifi.jsonl` | `kind: "wifi-probe"` / `"wifi-assoc"` (Alfa monitor) |
 
 ## Live ports (bound to all interfaces; remote machines can connect)
