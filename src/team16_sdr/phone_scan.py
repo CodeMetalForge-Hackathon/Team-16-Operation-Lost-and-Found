@@ -34,41 +34,38 @@ def open_device(uri, freq, samplerate, bw, gain):
     return phy, lpc
 
 
-def dwell(lpc, samplerate, seconds, buf_limit=32768):
+def dwell(lpc, samplerate, seconds, buf_limit=32768, tries=6):
     """Capture `seconds` of complex IQ from cf-ad9361-lpc (I/Q int16).
 
-    The Pi5 xHCI sometimes arms the first DMA buffer dead (reads all-zero
-    forever); recreate the buffer until the first read carries signal.
+    libiio's Python Buffer.read() only copies the buffer's current contents;
+    refill() is what triggers the DMA fetch. The firmware delivers low-aligned
+    12-bit samples sign-extended into int16 (extract with <<20>>20). Each
+    refill/read pair is retried on a dead (~0) or saturated read, up to `tries`.
     """
     import iio
     n = int(samplerate * seconds)
     size = min(n, buf_limit)
-    buf = None
-    for _ in range(10):
-        buf = iio.Buffer(lpc, size, cyclic=False)
-        first = buf.read()
-        if np.abs(np.frombuffer(first, dtype="<i2")).max() > 100:
-            break
-        del buf
-    chunks = [np.frombuffer(first, dtype="<i2")]
-    got = len(chunks[0]) // 2
-    fails = 0
-    while got < n:
+    buf = iio.Buffer(lpc, size, cyclic=False)
+    iq = np.zeros(2, dtype=np.int16)
+    for _ in range(tries):
+        chunks = []
+        got = 0
         try:
-            data = buf.read()
-            fails = 0
+            while got < n:
+                buf.refill()
+                raw = np.frombuffer(buf.read(), dtype="<i2")
+                chunks.append(raw)
+                got += len(raw) // 2
         except Exception:
-            fails += 1
-            if fails >= 2:
-                raise
+            del buf
+            buf = iio.Buffer(lpc, size, cyclic=False)
             continue
-        raw = np.frombuffer(data, dtype="<i2")
-        chunks.append(raw)
-        got += len(raw) // 2
-    iq = np.concatenate(chunks) if len(chunks) > 1 else chunks[0]
+        iq = np.concatenate(chunks) if len(chunks) > 1 else chunks[0]
+        if 0.5 < float(np.abs(iq).mean()) < 2000.0:  # live RF; dead ~0
+            break
     iq = iq[: 2 * (len(iq) // 2)]
-    i = (iq[0::2] >> 4).astype(np.float64)  # S12/16 left-aligned -> 12-bit
-    q = (iq[1::2] >> 4).astype(np.float64)
+    i = (iq[0::2].astype(np.int32) << 20 >> 20).astype(np.float64)  # low-aligned S12
+    q = (iq[1::2].astype(np.int32) << 20 >> 20).astype(np.float64)
     return i + 1j * q
 
 
@@ -95,11 +92,12 @@ def analyze(iq, samplerate, margin_db):
     usable = (hi - lo) // group
     gm = psd[lo:lo + usable * group].reshape(usable, group).mean(axis=1)
     gm_db = 10 * np.log10(np.maximum(gm, 1e-30)) - 20 * np.log10(FULL_SCALE)
-    dc = seg // 2  # fftshift puts DC at center; blank its group
-    for g in range(usable):
-        b0, b1 = lo + g * group, lo + (g + 1) * group
-        if b0 <= dc < b1:
-            gm_db[g] = -np.inf
+    # Blank the USB transfer spurs at +/- fs/4: receiver artifacts that
+    # outrank real signals (measured +16..21 dB over floor). DC is kept:
+    # a phone's uplink lands there when the LO sits on the channel center,
+    # and LO feedthrough alone stays under the margin.
+    centers = (lo + np.arange(usable) * group + group // 2 - seg // 2) * per_bin
+    gm_db[np.abs(np.abs(centers) - samplerate / 4) < 1.8e6] = -np.inf
     k = int(np.argmax(gm_db))
     best_db = float(gm_db[k])
     if best_db < floor + margin_db:
@@ -112,12 +110,13 @@ def analyze(iq, samplerate, margin_db):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--uri", default="usb:")
-    ap.add_argument("--freq", type=int, default=2_620_000_000,
+    ap.add_argument("--freq", type=int, default=2_535_000_000,
                     help="single channel for one-shot dwells (walk_log)")
     ap.add_argument("--samplerate", type=float, default=20e6)
     ap.add_argument("--gain", type=float, default=30)
     ap.add_argument("--dwell", type=float, default=2.0)
-    ap.add_argument("--channels", default="2620000000,1750000000,850000000")
+    ap.add_argument("--channels", default="2535000000,1730000000,707000000",
+                    help="LTE uplink centers: B7, B4, B12")
     ap.add_argument("--margin-db", type=float, default=8.0)
     ap.add_argument("--out", default="rf_hits.jsonl")
     ap.add_argument("--once", action="store_true",
