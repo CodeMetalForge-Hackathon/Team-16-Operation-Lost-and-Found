@@ -32,4 +32,4 @@ run:
 
 When opened from the Pi-hosted address, the dashboard uses that same host for every panel. Open the Pi's own address over plain http. A page served over https cannot call the Pi's http feeds.
 
-The page is plain light by default and follows the system dark setting. All colors are tokens at the top of `styles.css`.
+The page is a warm, plain light theme. All colors are tokens at the top of `styles.css`.
