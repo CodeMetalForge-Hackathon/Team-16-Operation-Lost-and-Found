@@ -8,7 +8,9 @@ floor, and appends rf_hit JSON lines:
 Never touches the TX chain (altvoltage1) or ensm_mode.
 """
 import argparse
+import fcntl
 import json
+import os
 import sys
 import time
 
@@ -16,6 +18,22 @@ import numpy as np
 
 GROUP_HZ = 1_000_000  # bin-group width for hit detection
 FULL_SCALE = 2048.0   # 12-bit IQ full scale
+PLUTO_LOCK = "/tmp/pluto-sdr.lock"  # /tmp: reboot-clean
+
+
+def acquire_pluto_lock():
+    """Exclusive flock held for the process lifetime; None if busy.
+
+    libiio allows ONE buffer per device, so exactly one phone_scan.py
+    may own the Pluto. Release is implicit when the process exits.
+    """
+    fd = os.open(PLUTO_LOCK, os.O_CREAT | os.O_RDWR, 0o644)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        os.close(fd)
+        return None
+    return fd
 
 
 def open_device(uri, freq, samplerate, bw, gain):
@@ -124,6 +142,10 @@ def main():
     args = ap.parse_args()
 
     channels = [int(c) for c in args.channels.split(",") if c.strip()]
+    if acquire_pluto_lock() is None:
+        print("ERROR: Pluto busy (holder has /tmp/pluto-sdr.lock)",
+              file=sys.stderr)
+        return 1
     phy, lpc = open_device(args.uri, channels[0], args.samplerate,
                            args.samplerate, args.gain)
 
