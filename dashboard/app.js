@@ -701,7 +701,11 @@ function drawMap() {
 function renderMap(d) {
   mapDoc = d;
   const cur = d.locked === false ? null : readPose(d.pose);
-  if (cur) {
+  if (Array.isArray(d.trail)) {   // the feed keeps every pose ever posted, so use that as the track
+    mapTrail = d.trail.map(readPose).filter(Boolean);
+    mapDist = 0;
+    for (let i = 1; i < mapTrail.length; i++) mapDist += Math.hypot(mapTrail[i].x - mapTrail[i - 1].x, mapTrail[i].y - mapTrail[i - 1].y);
+  } else if (cur) {
     if (mapLast) {
       const step = Math.hypot(cur.x - mapLast.x, cur.y - mapLast.y);
       if (step > 0.03) { mapDist += step; mapTrail.push(cur); mapLast = cur; }
@@ -742,7 +746,11 @@ async function pollMap(host) {
 }
 
 mapEls.retry.addEventListener("click", () => { const h = normalizeHost(hostInput.value); if (h) pollMap(h); });
-mapEls.clear.addEventListener("click", () => { mapTrail = []; mapDist = 0; mapLast = null; drawMap(); });
+mapEls.clear.addEventListener("click", async () => {
+  mapTrail = []; mapDist = 0; mapLast = null; drawMap();
+  const h = normalizeHost(hostInput.value);
+  if (h) { try { await fetch("http://" + h + ":8086/clear", { method: "POST" }); } catch { /* feed unreachable */ } }
+});
 window.addEventListener("resize", () => { if (mapDoc) drawMap(); });
 
 
