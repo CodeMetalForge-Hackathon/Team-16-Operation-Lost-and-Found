@@ -12,7 +12,7 @@ Vision is `thermal/` and `picam/`. Run notes for both are below. Neither folder 
 
 ## Decide where to look
 
-The search map is `search_hotspots/` (`search_hotspots/README.md`). The live picture is `dashboard/` (`dashboard/README.md`): fused detection, thermal view, beacon health, radio contacts, and inertial position.
+The search map is `search_hotspots/` (`search_hotspots/README.md`). The live picture is `dashboard/` (`dashboard/README.md`): fused detection, thermal view, Pi health, radio contacts, the lidar room map, and inertial position.
 
 ## Hand the find to a team on foot
 
@@ -91,9 +91,7 @@ people in the Pi Cam 3 (color) and the HT-203U (gray), the RandomForest scores t
 each visible person box is checked for a hotspot inside it. Labels: HUMAN (shape + heat), UNCONFIRMED,
 NO HEAT (decoy?), THERMAL ONLY (heat, no visible person). `thermal/fusion_web.py` is a separate
 process that serves the results so the Hailo loop can never starve the web server.
-`thermal/fusion_supervisor.sh` (started by `start_fusion.sh`) is a watchdog: if the detector exits, or
-stops writing frames for 15 s (the Hailo `infer()` call has hung after about an hour), it is killed and
-restarted automatically. Restarts are logged in `fusion.log`.
+The Hailo itself runs in a worker process (`thermal/hailo_proxy.py`), not in the detector. If the chip stops answering (the Hailo `infer()` call hangs), the cameras and the dashboard keep running, the status line says AI STALLED, and after a few seconds the worker is killed and restarted by itself. `thermal/fusion_supervisor.sh` (started by `start_fusion.sh`) is the outer watchdog: if the detector exits, or stops writing frames for 15 s, it is restarted, with a longer wait after repeated quick failures. If the chip cannot be opened at all the detector still runs on the cameras and the heat hotspots. Restarts are logged in `fusion.log`. The thermal feed is capped at 18 fps (the camera delivers 25). The Hailo has stalled most often while the Pluto cellular scan (`src/team16_sdr/`) was running; the cause is not proven, and a hung chip only recovers after a full power-off.
 
 On the Pi (stop other feeds first; only one process can own the Hailo and the Pi camera):
 
@@ -105,7 +103,7 @@ On the Pi (stop other feeds first; only one process can own the Hailo and the Pi
 Fused view (visible cropped to the thermal field of view) on `:8081`, thermal view on `:8082`, and the
 dashboard on `:8090`. The visible camera is rotated 180 degrees and uses the full-field 2304x1296 sensor
 mode (the default 1280x720 pick is a centre crop). Align the two cameras with the dashboard's
-**Recalibrate** button: stand alone in view of both cameras and move slowly for up to 30 s. It writes
+**Recalibrate** button: stand alone in view of both cameras and walk slowly from one side of the thermal view to the other for up to 30 s (it needs a wide left-to-right spread). It writes
 `thermal/fusion_calib.json` (not committed; it depends on how the cameras are mounted). Manual
 alternative: `thermal/calibrate_fusion.py` with a pair saved by `--record`. Without calibration the
 overlay says UNCALIBRATED and the alignment is only a rough guess. The fusion weights are hand-set,

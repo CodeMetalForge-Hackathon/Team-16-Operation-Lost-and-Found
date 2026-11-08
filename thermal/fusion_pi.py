@@ -27,6 +27,7 @@ import cv2
 import numpy as np
 
 from thermal_pi import CpuBackend, HailoBackend, HEF_DEFAULT, SIZE, find_camera, open_camera, thermal_crop
+from hailo_proxy import HailoProxy
 
 HERE = Path(__file__).resolve().parent
 CALIB = HERE / "fusion_calib.json"
@@ -472,7 +473,7 @@ def main():
     try:
         if a.no_hailo:
             raise RuntimeError("--no-hailo")
-        hailo = FusionHailo(a.hef)
+        hailo = HailoProxy(a.hef)  # the chip lives in a worker process: a hang there cannot freeze the video
     except Exception as e:  # chip gone: keep the screens alive without AI boxes
         print(f"HAILO UNAVAILABLE ({type(e).__name__}) - running cameras + heat hotspots only", flush=True)
         hailo = NoHailo()
@@ -529,8 +530,10 @@ def main():
             fps = 0.9 * fps + 0.1 / max(now - t_last, 1e-6)
             t_last = now
             st = CAL.status()
+            ai = getattr(hailo, "state", "ready")
+            ai_note = "" if ai == "ready" else f"  AI {ai.upper()}"
             stats = (f"CALIBRATING {st['samples']}/{st['needed']} - stand alone, move slowly ({st['secs_left']}s)"
-                     if st["state"] == "collecting" and thermal_ok else f"{fps:.0f} fps  {ms:.0f} ms")
+                     if st["state"] == "collecting" and thermal_ok else f"{fps:.0f} fps  {ms:.0f} ms{ai_note}")
             fused_img, thermal_img = render(vis, thm, targets, smooth, te, calibrated, stats,
                                             footprint(H, vis.shape), rf_p, thm_score, thermal_ok)
             frames_done += 1
@@ -540,7 +543,7 @@ def main():
             poll_commands()
             if now - t_status >= 0.3:
                 t_status = now
-                publish_status({"fps": round(fps, 1), "t": now})
+                publish_status({"fps": round(fps, 1), "t": now, "ai": ai})
             publish("fused", fused_img)
             publish("thermal", thermal_img)
             if any(t["kind"] in ("HUMAN", "THERMAL ONLY") for t in targets):
