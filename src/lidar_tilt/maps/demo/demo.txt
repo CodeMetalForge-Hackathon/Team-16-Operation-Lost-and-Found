@@ -1,0 +1,8 @@
+demo room
+origin is the first cloud
++X is that lidar forward, +Y is its left, +Z is up
+positive heading below is clockwise from the first cloud
+origin x_m 0.000 y_m 0.000 z_m 0.000 yaw_cw_deg -0.0
+left3ft_ccw45 x_m -0.098 y_m -0.582 z_m -0.074 yaw_cw_deg -41.8
+forward24ft_left3ft_ccw45 x_m -4.195 y_m -0.664 z_m -0.228 yaw_cw_deg -36.2
+forward27ft_ccw45 x_m -4.959 y_m -0.059 z_m -0.228 yaw_cw_deg -36.3

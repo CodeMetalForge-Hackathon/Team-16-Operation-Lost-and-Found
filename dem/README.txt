@@ -1,1 +1,1 @@
-Put clipped USGS 3DEP GeoTIFFs here (e.g. franconia_3dep.tif). Not committed (see .gitignore).
+Put clipped USGS 3DEP GeoTIFFs here (for example franconia_3dep.tif). These tiles are not committed.

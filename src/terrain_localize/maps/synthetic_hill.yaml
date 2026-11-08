@@ -1,0 +1,10 @@
+resolution: 10.0
+origin_x: 0.0
+origin_y: 0.0
+width: 200
+height: 200
+z_min: 226.02899665488454
+z_max: 537.4840411788385
+npy: synthetic_hill.npy
+png: synthetic_hill.png
+frame_id: map

@@ -1,0 +1,5 @@
+forward24ft_left3ft_ccw45
+user: still 3 feet left, still -45 degrees, now about 24 feet forward
+x_m 7.315
+y_m 0.914
+yaw_cw_deg -45

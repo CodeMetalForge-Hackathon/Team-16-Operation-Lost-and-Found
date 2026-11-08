@@ -1,0 +1,5 @@
+forward27ft_ccw45
+user: 27 feet forward, back to 0 left-right, still -45 deg
+x_m 8.230
+y_m 0
+yaw_cw_deg -45
