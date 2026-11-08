@@ -1,23 +1,23 @@
 /* Team 16 dashboard: warm, plain and readable. Light only. */
 :root {
   color-scheme: light;
-  --bg: #f7f4ee;
-  --panel: #ffffff;
-  --panel-2: #f3efe7;
-  --line: #e4ddd0;
-  --grid: rgba(110, 95, 75, 0.16);
-  --muted: #6c655b;
-  --text: #2b2723;
-  --accent: #3d73b8;
+  --bg: #e9e4f3;
+  --panel: #f6f2fb;
+  --panel-2: #ebe5f6;
+  --line: #d8cfe8;
+  --grid: rgba(105, 90, 140, 0.16);
+  --muted: #766f8c;
+  --text: #38324d;
+  --accent: #5577c4;
   --accent-ink: #ffffff;
-  --green: #2f7d4f;
-  --amber: #b4691b;
-  --red: #c0463a;
-  --cyan: #3d73b8;
-  --map-cell: #4a4339;
-  --viewport: #ece7dd;
-  --radius: 14px;
-  --shadow: 0 1px 3px rgba(60, 45, 25, 0.08), 0 4px 14px rgba(60, 45, 25, 0.05);
+  --green: #3f8d6a;
+  --amber: #b4772c;
+  --red: #c2564f;
+  --cyan: #5577c4;
+  --map-cell: #5a5273;
+  --viewport: #ddd5ee;
+  --radius: 24px;
+  --shadow: 0 2px 6px rgba(90, 70, 130, 0.08), 0 8px 24px rgba(90, 70, 130, 0.07);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 17px;
 }
@@ -50,6 +50,7 @@ button, input { font: inherit; }
 }
 
 .topbar {
+  background: linear-gradient(120deg, #e3dcf5, #dcebf2);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -103,11 +104,11 @@ h2 { font-size: 1.05rem; }
 input {
   min-width: 0;
   flex: 1;
-  padding: 9px 12px;
+  padding: 10px 16px;
   color: var(--text);
-  background: var(--panel);
+  background: #fbf9fe;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 999px;
   outline: none;
 }
 
@@ -174,7 +175,7 @@ button.primary:hover { filter: brightness(1.08); background: var(--accent); }
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: #000;
+  background: var(--viewport);
 }
 
 .screen-card.is-live .viewport img { display: block; }
