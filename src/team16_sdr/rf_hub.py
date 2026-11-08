@@ -50,7 +50,7 @@ Every phone-detect hit lands here, split by category. `rf_hub.py`
 |---|---|---|
 | `rf-feed-monitor.service` (root) | `monitor_scan.py` (Alfa ch1 monitor + hci2 = Realtek NIC BT) | wifi, bt, ble |
 | `rf-feed-cell.service` (hacker) | `phone_scan.py` (Pluto 1 uplink dwell: B7/B4/B12) | cell |
-| `rf-feed-cell2.service` (hacker) | `phone_scan.py` (Pluto 2 uplink dwell: B1/B20/B8) | cell |
+| `rf-feed-cell2.service` (hacker) | `phone_scan.py` (Pluto 2 uplink dwell: B13/B29/B71) | cell |
 
 `run_pod.sh` pkills `phone_scan.py` for its demo window; the cell feed
 services then flap (Pluto lock busy, rc=1) until the demo ends and

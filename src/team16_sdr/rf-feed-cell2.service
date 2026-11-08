@@ -8,9 +8,12 @@ User=hacker
 WorkingDirectory=/home/hacker/team16_sdr
 # Second ADALM-PLUTO (new NIC hub port 4-1.2); receive-only. Distinct
 # per-device lock (phone_scan --pluto-serial) so rf-feed-cell coexists.
-# Bands: B1 UL 1950, B20 UL 847, B8 UL 897 (feed 1 has B7/B4/B12).
+# Bands (US uplink): B13 UL 782.5, B29 UL 722, B71 UL 680
+# (feed 1 has B7/B4/B12; B2 UL == B4 UL 1710-1755, already covered).
+# Was 1950/847/897: 1950+897 are B2/B5 DOWNLINK (towers, 2 MHz-wide
+# carriers) and 854.5 is SMR 851-869, not cellular UL.
 ExecStartPre=+/bin/sh -c 'touch /home/hacker/team16_sdr/rf_hits.jsonl && chown hacker:hacker /home/hacker/team16_sdr/rf_hits.jsonl'
-ExecStart=/usr/bin/python3 /home/hacker/team16_sdr/phone_scan.py --pluto-serial 10447318ac0f001006000200cd52173ac3 --channels 1950000000,847000000,897000000 --gain 40 --out /home/hacker/team16_sdr/rf_hits.jsonl
+ExecStart=/usr/bin/python3 /home/hacker/team16_sdr/phone_scan.py --pluto-serial 10447318ac0f001006000200cd52173ac3 --channels 782500000,722000000,680000000 --gain 40 --out /home/hacker/team16_sdr/rf_hits.jsonl
 Restart=on-failure
 RestartSec=5
 
