@@ -1,0 +1,434 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -71.645572,
+     44.159062
+    ]
+   },
+   "properties": {
+    "type": "hotspot",
+    "t": 1794085010.627922,
+    "rank": 1,
+    "zone": "trail",
+    "row": 136,
+    "col": 218,
+    "elev_m": 1603.8,
+    "poa_250m": 0.0561,
+    "reasons": [
+     "history",
+     "alpine",
+     "trail"
+    ],
+    "contrib": {
+     "downstream": 0.301,
+     "stream": 0.0,
+     "trail": 0.654,
+     "alpine": 0.694,
+     "trap": 0.0,
+     "history": 0.984
+    }
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -71.646323,
+     44.141275
+    ]
+   },
+   "properties": {
+    "type": "hotspot",
+    "t": 1794085010.6289232,
+    "rank": 2,
+    "zone": "trail",
+    "row": 202,
+    "col": 216,
+    "elev_m": 1563.2,
+    "poa_250m": 0.0438,
+    "reasons": [
+     "trail",
+     "alpine",
+     "history"
+    ],
+    "contrib": {
+     "downstream": 0.057,
+     "stream": 0.0,
+     "trail": 0.741,
+     "alpine": 0.724,
+     "trap": 0.0,
+     "history": 0.466
+    }
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -71.678246,
+     44.142892
+    ]
+   },
+   "properties": {
+    "type": "hotspot",
+    "t": 1794085010.6289232,
+    "rank": 3,
+    "zone": "trail",
+    "row": 196,
+    "col": 131,
+    "elev_m": 539.9,
+    "poa_250m": 0.043,
+    "reasons": [
+     "trail",
+     "downstream",
+     "stream"
+    ],
+    "contrib": {
+     "downstream": 0.429,
+     "stream": 0.292,
+     "trail": 0.809,
+     "alpine": 0.0,
+     "trap": 0.0,
+     "history": 0.009
+    }
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -71.647074,
+     44.163374
+    ]
+   },
+   "properties": {
+    "type": "hotspot",
+    "t": 1794085010.6389203,
+    "rank": 4,
+    "zone": "off-trail",
+    "row": 120,
+    "col": 214,
+    "elev_m": 1401.4,
+    "poa_250m": 0.011,
+    "reasons": [
+     "history",
+     "alpine",
+     "trail"
+    ],
+    "contrib": {
+     "downstream": 0.045,
+     "stream": 0.0,
+     "trail": 0.163,
+     "alpine": 0.437,
+     "trap": 0.0,
+     "history": 0.885
+    }
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -71.649703,
+     44.152864
+    ]
+   },
+   "properties": {
+    "type": "hotspot",
+    "t": 1794085010.6389203,
+    "rank": 5,
+    "zone": "off-trail",
+    "row": 159,
+    "col": 207,
+    "elev_m": 1353.2,
+    "poa_250m": 0.0091,
+    "reasons": [
+     "history",
+     "alpine",
+     "trail"
+    ],
+    "contrib": {
+     "downstream": 0.0,
+     "stream": 0.001,
+     "trail": 0.122,
+     "alpine": 0.397,
+     "trap": 0.0,
+     "history": 0.615
+    }
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -71.684631,
+     44.139928
+    ]
+   },
+   "properties": {
+    "type": "hotspot",
+    "t": 1794085010.6389203,
+    "rank": 6,
+    "zone": "off-trail",
+    "row": 207,
+    "col": 114,
+    "elev_m": 464.6,
+    "poa_250m": 0.0086,
+    "reasons": [
+     "downstream",
+     "stream",
+     "trap"
+    ],
+    "contrib": {
+     "downstream": 1.394,
+     "stream": 0.6,
+     "trail": 0.146,
+     "alpine": 0.0,
+     "trap": 0.15,
+     "history": 0.009
+    }
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -71.674115,
+     44.149899
+    ]
+   },
+   "properties": {
+    "type": "hotspot",
+    "t": 1794085010.6389203,
+    "rank": 7,
+    "zone": "off-trail",
+    "row": 170,
+    "col": 142,
+    "elev_m": 608.5,
+    "poa_250m": 0.0072,
+    "reasons": [
+     "downstream",
+     "stream",
+     "trail"
+    ],
+    "contrib": {
+     "downstream": 0.708,
+     "stream": 0.491,
+     "trail": 0.141,
+     "alpine": 0.0,
+     "trap": 0.0,
+     "history": 0.019
+    }
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -71.639563,
+     44.153133
+    ]
+   },
+   "properties": {
+    "type": "hotspot",
+    "t": 1794085010.6389203,
+    "rank": 8,
+    "zone": "off-trail",
+    "row": 158,
+    "col": 234,
+    "elev_m": 1362.1,
+    "poa_250m": 0.0087,
+    "reasons": [
+     "history",
+     "alpine",
+     "downstream"
+    ],
+    "contrib": {
+     "downstream": 0.166,
+     "stream": 0.001,
+     "trail": 0.142,
+     "alpine": 0.418,
+     "trap": 0.0,
+     "history": 0.632
+    }
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -71.639938,
+     44.144779
+    ]
+   },
+   "properties": {
+    "type": "hotspot",
+    "t": 1794085010.6389203,
+    "rank": 9,
+    "zone": "off-trail",
+    "row": 189,
+    "col": 233,
+    "elev_m": 1372.0,
+    "poa_250m": 0.0077,
+    "reasons": [
+     "history",
+     "alpine",
+     "trail"
+    ],
+    "contrib": {
+     "downstream": 0.127,
+     "stream": 0.006,
+     "trail": 0.142,
+     "alpine": 0.418,
+     "trap": 0.0,
+     "history": 0.426
+    }
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -71.664726,
+     44.145587
+    ]
+   },
+   "properties": {
+    "type": "hotspot",
+    "t": 1794085010.6389203,
+    "rank": 10,
+    "zone": "off-trail",
+    "row": 186,
+    "col": 167,
+    "elev_m": 823.5,
+    "poa_250m": 0.0061,
+    "reasons": [
+     "stream",
+     "trail",
+     "history"
+    ],
+    "contrib": {
+     "downstream": 0.0,
+     "stream": 0.12,
+     "trail": 0.12,
+     "alpine": 0.0,
+     "trap": 0.0,
+     "history": 0.074
+    }
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -71.652332,
+     44.136963
+    ]
+   },
+   "properties": {
+    "type": "hotspot",
+    "t": 1794085010.6389203,
+    "rank": 11,
+    "zone": "off-trail",
+    "row": 218,
+    "col": 200,
+    "elev_m": 1105.2,
+    "poa_250m": 0.0051,
+    "reasons": [
+     "history",
+     "downstream",
+     "trail"
+    ],
+    "contrib": {
+     "downstream": 0.187,
+     "stream": 0.003,
+     "trail": 0.122,
+     "alpine": 0.0,
+     "trap": 0.0,
+     "history": 0.299
+    }
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -71.633553,
+     44.141545
+    ]
+   },
+   "properties": {
+    "type": "hotspot",
+    "t": 1794085010.6389203,
+    "rank": 12,
+    "zone": "off-trail",
+    "row": 201,
+    "col": 250,
+    "elev_m": 973.2,
+    "poa_250m": 0.0026,
+    "reasons": [
+     "stream",
+     "downstream",
+     "history"
+    ],
+    "contrib": {
+     "downstream": 0.24,
+     "stream": 0.384,
+     "trail": 0.009,
+     "alpine": 0.0,
+     "trap": 0.0,
+     "history": 0.236
+    }
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -71.661346,
+     44.137502
+    ]
+   },
+   "properties": {
+    "type": "hotspot",
+    "t": 1794085010.6399202,
+    "rank": 13,
+    "zone": "off-trail",
+    "row": 216,
+    "col": 176,
+    "elev_m": 847.3,
+    "poa_250m": 0.0053,
+    "reasons": [
+     "downstream",
+     "trail",
+     "history"
+    ],
+    "contrib": {
+     "downstream": 0.404,
+     "stream": 0.005,
+     "trail": 0.135,
+     "alpine": 0.0,
+     "trap": 0.0,
+     "history": 0.112
+    }
+   }
+  }
+ ]
+}
