@@ -23,6 +23,7 @@
   .tools button, .tools label { background:rgba(15,18,22,.85); color:var(--text); border:1px solid var(--line);
           border-radius:6px; padding:5px 10px; font:inherit; font-size:12.5px; cursor:pointer; }
   .tools button.on { border-color:var(--next); color:var(--next); }
+  .tools button:disabled { opacity:.4; cursor:not-allowed; }
   .tools input { vertical-align:-2px; margin-right:4px; }
   .hint { position:absolute; bottom:10px; right:12px; color:var(--muted); font-size:12px;
           background:rgba(15,18,22,.7); padding:3px 8px; border-radius:5px; }
@@ -31,7 +32,7 @@
   .cam img { width:100%; display:block; background:#000; min-height:200px; }
   .cam .ph { padding:40px 16px; color:var(--muted); text-align:center; }
   h2 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0; padding:10px 12px 6px; }
-  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:0 12px 12px; }
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:0 12px 12px; }
   .stat b { display:block; font-size:20px; font-variant-numeric:tabular-nums; }
   .stat span { color:var(--muted); font-size:12px; }
   details.key summary { cursor:pointer; list-style:none; }
@@ -53,7 +54,8 @@
   .simform button { flex:1; border:0; border-radius:6px; padding:7px 10px; font:inherit; font-size:13px; cursor:pointer; }
   #sim-go { background:#ffd23f; color:#111; font-weight:600; }
   #sim-go:disabled { opacity:.5; cursor:wait; }
-  #sim-stop { background:#2a313a; color:var(--text); }
+  #sim-stop, #sim-reset { background:#2a313a; color:var(--text); }
+  #sim-reset { border:1px solid #ff3b5c; }
   #sim-msg { font-size:12.5px; color:var(--muted); min-height:18px; }
   #sim-msg.err { color:#ff7b8a; }
   #pickhint { position:absolute; bottom:44px; left:50%; transform:translateX(-50%); background:rgba(255,210,63,.95); color:#111; font-size:12.5px;
@@ -108,6 +110,7 @@
         <div class="stat"><b id="s-searched">0%</b><span>probability cleared</span></div>
         <div class="stat"><b id="s-area">0.0</b><span>km² covered</span></div>
         <div class="stat"><b id="s-hs">0/0</b><span>hot spots visited</span></div>
+        <div class="stat"><b id="s-beacon">–</b><span>beacons left</span></div>
       </div>
     </section>
     <section class="card">
@@ -121,8 +124,14 @@
               <option value="50">50x</option><option value="100">100x</option></select></div>
           <div><label for="sim-seed">Hiker hiding spot</label><input id="sim-seed" placeholder="random" inputmode="numeric"></div>
         </div>
+        <div><label for="sim-hiker">How does the hiker behave?</label>
+          <select id="sim-hiker">
+            <option value="realistic" selected>Realistic: like real White Mountains cases</option>
+            <option value="model">Follows our model (best case)</option>
+          </select></div>
         <div id="sim-point" style="font-size:12.5px;color:var(--muted)"></div>
-        <div class="btns"><button id="sim-go">Start simulation</button><button id="sim-stop">Stop</button></div>
+        <div class="btns"><button id="sim-go">Start simulation</button><button id="sim-stop">Stop</button>
+          <button id="sim-reset" title="Stop the pod and clear the search, so you can start over">Reset search</button></div>
         <div id="sim-msg"></div>
       </div>
     </section>
@@ -145,6 +154,8 @@
             <div><b>Stream</b><br><span>Lost hikers often walk downhill along water, so streams are searched closely.</span></div></div>
           <div class="row"><svg viewBox="0 0 28 20"><path d="M2 12 L26 8" fill="none" stroke="#8c1f1a" stroke-width="2.5"/></svg>
             <div><b>Planned trail</b><br><span>The route the missing person was on.</span></div></div>
+          <div class="row"><svg viewBox="0 0 28 20"><path d="M6 4 L18 16 M18 4 L6 16" stroke="#000" stroke-width="5"/><path d="M6 4 L18 16 M18 4 L6 16" stroke="#e040fb" stroke-width="3"/></svg>
+            <div><b>Hiker was here (simulation)</b><br><span>Shown only after a simulated search ends: where the hiker was really hidden.</span></div></div>
           <h3>Places</h3>
           <div class="row"><svg viewBox="0 0 28 20"><path d="M12 4 L18 15 L6 15 Z" fill="#5b3a1e" stroke="#fff" stroke-width="1.5"/></svg>
             <div><b>Summit</b><br><span>Mountain peak. Only the big ones show when zoomed out; zoom in to see all.</span></div></div>
@@ -163,7 +174,9 @@
           <div class="row"><svg viewBox="0 0 28 20"><path d="M12 2 L20 10 L12 18 L4 10 Z" fill="#ff7a2f" stroke="#000" stroke-width="1.5"/></svg>
             <div><b>Camera detection</b><br><span>The camera spotted a person or an unnatural color, such as an orange jacket.</span></div></div>
           <div class="row"><svg viewBox="0 0 28 20"><path d="M12 1 L14.6 7.4 L21.5 7.9 L16.2 12.3 L17.9 19 L12 15.4 L6.1 19 L7.8 12.3 L2.5 7.9 L9.4 7.4 Z" fill="#ff3b5c" stroke="#000" stroke-width="1.2"/></svg>
-            <div><b>Beacon dropped: subject located</b><br><span>The pod dropped a radio beacon on the detection so the ground team can walk straight to it.</span></div></div>
+            <div><b>Beacon: hiker confirmed</b><br><span>The camera saw a person. The pod dropped a radio beacon on them so the ground team can walk straight there.</span></div></div>
+          <div class="row"><svg viewBox="0 0 28 20"><path d="M12 1 L14.6 7.4 L21.5 7.9 L16.2 12.3 L17.9 19 L12 15.4 L6.1 19 L7.8 12.3 L2.5 7.9 L9.4 7.4 Z" fill="#1a1a1a" stroke="#ff9f43" stroke-width="2"/></svg>
+            <div><b>Beacon: possible sighting</b><br><span>The camera saw something unusual (e.g. an orange patch). The pod marks it with one of its ~10 beacons and keeps searching; a ground team checks it.</span></div></div>
           <div class="row"><svg viewBox="0 0 28 20"><circle cx="8" cy="10" r="3" fill="#b388ff" opacity=".6"/><circle cx="18" cy="10" r="3" fill="#b388ff" opacity=".6"/></svg>
             <div><b>Radio: our beacon</b><br><span>The pod hears the dropped beacon. A higher dB value means it is closer.</span></div></div>
           <div class="row"><svg viewBox="0 0 28 20"><circle cx="12" cy="10" r="3.5" fill="#ff5ac8"/></svg>
@@ -185,7 +198,7 @@ let V = null;                       // view: centre (cx, cy) in metres, mpp = me
 let TRAILS = [], PICK = null, runId = -1, PLACES = [];
 fetch('/api/places').then(r => r.json()).then(p => { PLACES = p; draw(); });   // PICK = clicked last-known point {x, y}
 [region, base, heat].forEach(im => im.onload = draw);
-base.src = '/basemap.png';
+
 const D = () => devicePixelRatio || 1;
 
 fetch('/api/config').then(r => r.json()).then(c => {
@@ -249,6 +262,7 @@ selT.onchange = () => { pickMode(); const t = TRAILS.find(t => t.name === selT.v
 function setMsg(t, err) { msg.textContent = t || ''; msg.className = err ? 'err' : ''; }
 document.getElementById('sim-go').onclick = async () => {
   const body = { trail: selT.value || null, speed: +document.getElementById('sim-speed').value,
+                 hiker: document.getElementById('sim-hiker').value,
                  seed: document.getElementById('sim-seed').value.trim() };
   if (!body.trail) { if (!PICK) return setMsg('Click a point on the map first, or pick a trail.', true); body.x = PICK.x; body.y = PICK.y; }
   document.getElementById('sim-go').disabled = true; setMsg('Starting…');
@@ -259,6 +273,17 @@ document.getElementById('sim-go').onclick = async () => {
   } catch (e) { setMsg('Server not reachable', true); document.getElementById('sim-go').disabled = false; }
 };
 document.getElementById('sim-stop').onclick = () => fetch('/api/stop', { method: 'POST' });
+document.getElementById('sim-reset').onclick = async () => {
+  try {
+    const r = await (await fetch('/api/reset', { method: 'POST' })).json();
+    if (!r.ok) return setMsg(r.error, true);
+    window.hiddenDrop = null; PICK = null; follow = false;
+    document.getElementById('found').style.display = 'none';
+    document.getElementById('log').innerHTML = '<div class="warn">waiting for pod data…</div>';
+    setMsg('Search reset. Pick a trail or click the map, then press Start.');
+    pickMode(); tick();
+  } catch (e) { setMsg('Server not reachable', true); }
+};
 function jobUi() {
   const j = S.job; if (!j) return;
   if (j.stage !== 'idle') setMsg(j.message, j.stage === 'error');
@@ -281,16 +306,34 @@ cv.addEventListener('mouseleave', () => tip.style.display = 'none');
 
 function banner() {
   const el = document.getElementById('found');
-  const d = S.drops.filter(x => x.lat != null);
-  if (!d.length) { el.style.display = 'none'; return; }
-  const last = d[d.length - 1];
-  if (window.hiddenDrop === last.t) { el.style.display = 'none'; return; }
-  document.getElementById('found-x').onclick = () => { window.hiddenDrop = last.t; el.style.display = 'none'; };
-  document.getElementById('found-det').innerHTML =
-    `Beacon <b>${last.beacon_id || ''}</b> dropped at ${fmtT(last.t)} · ${fmtLL(last)}<br>Ground team: direction-find beacon ${last.beacon_id || ''} to reach the person`;
-  document.getElementById('found-sim').textContent = last.sim ? 'Simulated run: the hiker was planted by simulate_flight.py' : '';
+  const big = el.querySelector('.big'), go = document.getElementById('found-go');
+  const all = S.drops.filter(x => x.lat != null);
+  const d = all.filter(x => x.kind === 'confirmed'), cand = all.filter(x => x.kind !== 'confirmed');
+  const ended = !d.length && S.status === 'return';
+  const candTxt = cand.length ? `<br>${cand.length} possible sighting${cand.length > 1 ? 's' : ''} also marked for ground teams to check: ${cand.map(c => c.beacon_id).join(', ')}` : '';
+  const left = S.beacons_left != null ? ` · ${S.beacons_left} of ${S.beacons_total} beacons left` : '';
+  if (!d.length && !ended) { el.style.display = 'none'; return; }
+  const key = d.length ? d[0].t : 'ended-' + runId;
+  if (window.hiddenDrop === key) { el.style.display = 'none'; return; }
+  document.getElementById('found-x').onclick = () => { window.hiddenDrop = key; el.style.display = 'none'; };
+  const sim = (d.length ? d[0].sim : (S.track.length && S.track[0].sim)) ? 'Simulated run' : '';
+  if (d.length) {                                    // confirmed beacon: subject located
+    const b = d[0];
+    el.style.borderColor = '#ff3b5c'; big.style.color = '#ff6b81'; big.textContent = 'SUBJECT LOCATED';
+    document.getElementById('found-det').innerHTML =
+      `Beacon <b>${b.beacon_id || ''}</b> dropped at ${fmtT(b.t)} · ${fmtLL(b)}<br>Ground team: direction-find beacon ${b.beacon_id || ''} to reach the person${candTxt}${left ? '<br>' + left.slice(3) : ''}`;
+    document.getElementById('found-sim').textContent = sim ? sim + ': the hiker was planted by simulate_flight.py' : '';
+    go.style.display = ''; go.onclick = () => { follow = false; setMode(''); V.cx = b.x; V.cy = b.y; V.mpp = Math.min(V.mpp, 6 / D()); draw(); };
+  } else {                                           // 0 beacons: pod ran out of search time
+    el.style.borderColor = '#ffd23f'; big.style.color = '#ffd23f'; big.textContent = 'SEARCH ENDED: NOT LOCATED';
+    document.getElementById('found-det').innerHTML =
+      `The pod returned without confirming the hiker after clearing ${Math.round((S.searched || 0) * 100)}% of the probability${left}.` + candTxt +
+      (S.truth && S.truth.method === 'realistic' ? `<br>The hiker (pink ✕) was ${S.truth.dist_from_route_m} m from the route, like ${S.truth.based_on.split(', found')[0]}.` : '') +
+      `<br>Next: relaunch on the remaining hot spots, or send ground teams to the reddest areas.`;
+    document.getElementById('found-sim').textContent = sim;
+    go.style.display = 'none';
+  }
   el.style.display = 'block';
-  document.getElementById('found-go').onclick = () => { follow = false; setMode(''); V.cx = last.x; V.cy = last.y; V.mpp = Math.min(V.mpp, 6 / D()); draw(); };
 }
 
 // pan & zoom
@@ -348,6 +391,7 @@ function draw() {
     const [x0, y0] = P(R.left, R.top), [x1, y1] = P(R.right, R.bottom);
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high"; ctx.drawImage(region, x0, y0, x1 - x0, y1 - y0);
   }
+  if (!S.active) { drawPlaces(); drawPick(); scalebar(); return; }   // no search yet: just the map
   if (document.getElementById('t-hill').checked) drawGridImage(base, 1);
   if (document.getElementById('t-heat').checked) drawGridImage(heat, 1);
   const c = S.corners, mid = [(c.ne[0] + c.sw[0]) / 2, (c.ne[1] + c.sw[1]) / 2];
@@ -399,9 +443,12 @@ function draw() {
     hit(x, y, 6 * d, r.note && r.note.startsWith('own') ? 'Radio: heard our beacon' : 'Radio: unknown transmitter',
         `${(r.hz / 1e6).toFixed(3)} MHz at ${r.power_db} dB (higher = closer/stronger)<br>${fmtT(r.t)}`); });
   S.drops.forEach(e => { if (e.x == null) return; const [x, y] = P(e.x, e.y);
-    star(x, y, 12 * d, '#ff3b5c'); label('BEACON ' + (e.beacon_id || ''), x + 14 * d, y + 4 * d, '#ff3b5c');
-    hit(x, y, 14 * d, `Beacon ${e.beacon_id || ''} dropped: subject located`,
-        `${fmtLL(e)}<br>Dropped ${fmtT(e.t)}. The ground team direction-finds this beacon to walk to the person.`); });
+    const ok = e.kind === 'confirmed';
+    if (ok) { star(x, y, 12 * d, '#ff3b5c'); label((e.beacon_id || '') + ' · HIKER', x + 14 * d, y + 4 * d, '#ff3b5c'); }
+    else { candStar(x, y, 10 * d); label((e.beacon_id || '') + ' · check', x + 12 * d, y + 4 * d, '#ff9f43'); }
+    hit(x, y, 14 * d, ok ? `Beacon ${e.beacon_id || ''}: hiker confirmed` : `Beacon ${e.beacon_id || ''}: possible sighting`,
+        `${fmtLL(e)}<br>Dropped ${fmtT(e.t)}${e.reason ? ' · ' + e.reason : ''}.<br>` +
+        (ok ? 'The ground team direction-finds this beacon to walk to the person.' : 'Not confirmed as the hiker. A ground team should check it; the pod kept searching.')); });
   S.detections.forEach(e => { if (e.x == null) return; const [x, y] = P(e.x, e.y), sz = 8 * d;
     ctx.fillStyle = '#ff7a2f'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5 * d; ctx.beginPath();
     ctx.moveTo(x + 16 * d, y - sz - 10 * d); ctx.lineTo(x + 16 * d + sz, y - 10 * d); ctx.lineTo(x + 16 * d, y + sz - 10 * d);
@@ -410,6 +457,16 @@ function draw() {
     const what = e.cls === 'person' ? 'a person' : e.cls === 'thermal' ? 'a warm body (thermal)' : `an unnatural color${e.color ? ' (' + e.color + ')' : ''}`;
     hit(x + 16 * d, y - 10 * d, 11 * d, 'Camera detection', `Spotted ${what}, ${Math.round((e.confidence || 0) * 100)}% confidence<br>${fmtLL(e)} · ${fmtT(e.t)}` +
         (e.placed === 'matched-by-time' ? '<br>Placed using the pod position at that moment' : '')); });
+  if (S.truth && S.truth.x != null) {                      // revealed after the search ends (simulation only)
+    const [x, y] = P(S.truth.x, S.truth.y), r = 8 * d;
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 5 * d; ctx.beginPath();
+    ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r); ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r); ctx.stroke();
+    ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 3 * d; ctx.stroke();
+    label('Hiker was here', x + 11 * d, y - 8 * d, '#f3a5ff');
+    const how = S.truth.method === 'realistic' ? `Realistic placement: ${S.truth.dist_from_route_m} m from the route<br>Based on ${S.truth.based_on}`
+              : S.truth.method === 'model' ? 'Placed by the search model (best case)' : 'Placed at a chosen point';
+    hit(x, y, 12 * d, 'Where the hiker actually was (simulation)', `${fmtLL(S.truth)}<br>${how}<br>${S.truth.found ? 'Found by the pod' : 'Not found by the pod'}`);
+  }
   drawPlaces();
   drawPick();
   scalebar();
@@ -467,6 +524,12 @@ function label(t, x, y, c) {
   const d = D(); ctx.font = `600 ${12 * d}px system-ui, Arial`;
   ctx.lineWidth = 3 * d; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.strokeText(t, x, y); ctx.fillStyle = c; ctx.fillText(t, x, y);
 }
+function candStar(x, y, r) {              // possible sighting: dark star with an orange outline
+  ctx.save(); ctx.beginPath();
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, q = i % 2 ? r * 0.45 : r;
+    ctx.lineTo(x + q * Math.cos(a), y + q * Math.sin(a)); }
+  ctx.closePath(); ctx.fillStyle = '#1a1a1a'; ctx.fill(); ctx.lineWidth = 2.2 * D(); ctx.strokeStyle = '#ff9f43'; ctx.stroke(); ctx.restore();
+}
 function star(x, y, r, c) {
   ctx.beginPath();
   for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .45 : r; ctx.lineTo(x + rr * Math.cos(a), y + rr * Math.sin(a)); }
@@ -478,14 +541,21 @@ function scalebar() {
   ctx.fillStyle = '#fff'; ctx.fillRect(x, y, px, 3 * d); label(m >= 1000 ? m / 1000 + ' km' : m + ' m', x, y - 6 * d, '#fff');
 }
 
-const COL = { detection: '#ff7a2f', drop_event: '#ff3b5c', rf_hit: '#b388ff', plan: '#ffd23f' };
-const TAG = { detection: 'camera', drop_event: 'beacon', rf_hit: 'radio', plan: 'plan' };
+const COL = { detection: '#ff7a2f', drop_event: '#ff3b5c', rf_hit: '#b388ff', plan: '#ffd23f', detection_note: '#ffd23f' };
+const TAG = { detection: 'camera', drop_event: 'beacon', rf_hit: 'radio', plan: 'plan', detection_note: 'camera' };
 function panel() {
-  document.getElementById('title').textContent = S.title || '';
+  document.getElementById('title').textContent = S.active ? (S.title || '') : 'No active search: start one from the "Run a simulation" panel';
+  if (!S.active) {
+    ['s-searched', 's-area', 's-hs', 's-beacon'].forEach(id => document.getElementById(id).textContent = '–');
+    document.getElementById('log').innerHTML = '<div class="warn">No search running yet.</div>'; return;
+  }
   document.getElementById('s-searched').textContent = Math.round((S.searched || 0) * 100) + '%';
   document.getElementById('s-area').textContent = (S.covered_km2 || 0).toFixed(1);
   document.getElementById('s-hs').textContent = S.hotspots.filter(h => h.visited).length + '/' + S.hotspots.length;
-  if (!S.events.length) return;
+  const bEl = document.getElementById('s-beacon');
+  bEl.textContent = S.beacons_left != null ? `${S.beacons_left}/${S.beacons_total}` : '–';
+  bEl.style.color = S.beacons_left === 0 ? '#ff6b81' : S.beacons_left <= 2 ? '#ffd23f' : '';
+  if (!S.events.length) { document.getElementById('log').innerHTML = '<div class="warn">waiting for pod data…</div>'; return; }
   document.getElementById('log').innerHTML = S.events.slice().reverse().map(e => {
     const t = fmtT(e.t);
     let what;
@@ -495,10 +565,14 @@ function panel() {
     } else if (e.type === 'plan') {
       what = `Pod heading to search box ${e.box}${e.poa != null ? ` (${(e.poa * 100).toFixed(1)}% of remaining probability)` : ''}`;
     } else if (e.type === 'drop_event') {
-      what = `<b>Beacon ${e.beacon_id || ''} dropped: subject located</b>`;
+      what = e.kind === 'confirmed' ? `<b>Beacon ${e.beacon_id || ''} dropped on the hiker: subject located</b>`
+        : `Beacon ${e.beacon_id || ''} dropped on a ${e.reason || 'possible sighting'}: ground team to check`;
+      if (e.beacons_left != null) what += ` · ${e.beacons_left} left`;
+    } else if (e.type === 'detection_note') {
+      what = `<span class="warn">Camera saw something but ${e.note}</span>`;
     } else {
       const own = e.note && e.note.startsWith('own');
-      what = `${own ? 'Heard our beacon' : 'Unknown transmitter'} · ${(e.hz / 1e6).toFixed(3)} MHz · ${e.power_db != null ? e.power_db.toFixed(1) + ' dB' : ''}`;
+      what = `${own ? 'Heard our beacon ' + (e.note.split(' ')[2] || '') : 'Unknown transmitter'} · ${(e.hz / 1e6).toFixed(3)} MHz · ${e.power_db != null ? e.power_db.toFixed(1) + ' dB' : ''}`;
     }
     const where = e.placed === 'no-position' ? ' <span class="warn">(no position)</span>' : '';
     return `<div><time>${t}</time><span class="tag" style="background:${COL[e.type]}33;color:${COL[e.type]}">${TAG[e.type]}</span><span>${what}${where}</span></div>`;
@@ -510,15 +584,20 @@ async function tick() {
     const s = await (await fetch('/api/state')).json();
     if (s.error) throw new Error(s.error);
     const first = !S; S = s; document.getElementById('err').style.display = 'none';
-    if (S.heat_version !== heatV) { heatV = S.heat_version; heat.src = '/heat.png?v=' + heatV; }
+    if (S.active && S.heat_version !== heatV) { heatV = S.heat_version; heat.src = '/heat.png?v=' + heatV + '&r=' + runId; }
     if (cv.width < 10) fit();
-    if (S.run_id !== runId) {                         // a new search area was set up
-      const was = runId; runId = S.run_id; base.src = '/basemap.png?r=' + runId; heatV = -1;
-      if (S.heat_version !== heatV) { heatV = S.heat_version; heat.src = '/heat.png?v=' + heatV + '&r=' + runId; }
-      if (cv.width < 10) fit();
-      if (was !== -1 || first) { follow = false; setMode('b-search'); frameBox(...searchBox(), 1.05); }
-      if (was !== -1) pickMode();
+    if (!V && L) { V = { cx: (L.left + L.right) / 2, cy: (L.bottom + L.top) / 2, mpp: 1e9 }; setMode('b-region'); }
+    if (S.run_id !== runId) {                         // a search area was set up, or cleared
+      const was = runId; runId = S.run_id;
+      if (S.active) {
+        base.src = '/basemap.png?r=' + runId; heatV = S.heat_version; heat.src = '/heat.png?v=' + heatV + '&r=' + runId;
+        follow = false; setMode('b-search'); frameBox(...searchBox(), 1.05);
+      } else if (was !== -1 && L) {
+        V = { cx: (L.left + L.right) / 2, cy: (L.bottom + L.top) / 2, mpp: 1e9 }; setMode('b-region');
+      }
+      pickMode();
     }
+    ['b-search', 'b-pod'].forEach(id => document.getElementById(id).disabled = !S.active);
     if (follow && S.track.length) { const l = S.track[S.track.length - 1]; V.cx = l.x; V.cy = l.y; }
     draw(); panel(); banner(); jobUi();
   } catch (e) {
@@ -526,7 +605,9 @@ async function tick() {
   }
   document.getElementById('clock').textContent = new Date().toLocaleTimeString();
 }
-fit(); tick(); setInterval(tick, 2000);
+// Opening (or reloading) the page always starts from a reset search: no old track, beacons or banner.
+fit();
+fetch('/api/reset', { method: 'POST' }).catch(() => {}).finally(() => { tick(); setInterval(tick, 2000); });
 </script>
 </body>
 </html>

@@ -1,0 +1,222 @@
+{
+ "source": "data/missing_persons.csv (Medium/High-confidence finds) vs. the route each person was on (search_hotspots/backtest.py CASE_ROUTES)",
+ "note": "Straight-line distance from the estimated find point to the nearest point of the planned route. Find points are estimates (+/- their uncertainty).",
+ "cases": [
+  {
+   "case": 11,
+   "name": "Alexandre Cassan",
+   "dist_m": 639,
+   "uncertainty_m": 300
+  },
+  {
+   "case": 31,
+   "name": "Wieslaw Walczak",
+   "dist_m": 97,
+   "uncertainty_m": 200
+  },
+  {
+   "case": 48,
+   "name": "Francois Carrier",
+   "dist_m": 32,
+   "uncertainty_m": 400
+  },
+  {
+   "case": 53,
+   "name": "Clark",
+   "dist_m": 312,
+   "uncertainty_m": 200
+  },
+  {
+   "case": 75,
+   "name": "Christine Beaulieu",
+   "dist_m": 196,
+   "uncertainty_m": 300
+  },
+  {
+   "case": 15,
+   "name": "Jason Gaumond",
+   "dist_m": 72,
+   "uncertainty_m": 200
+  },
+  {
+   "case": 101,
+   "name": "Justin Bolduc",
+   "dist_m": 37,
+   "uncertainty_m": 300
+  },
+  {
+   "case": 20,
+   "name": "Fredrickson and Osborne",
+   "dist_m": 0,
+   "uncertainty_m": 300
+  },
+  {
+   "case": 44,
+   "name": "David Fielding",
+   "dist_m": 0,
+   "uncertainty_m": 300
+  },
+  {
+   "case": 45,
+   "name": "Al Diaz",
+   "dist_m": 1619,
+   "uncertainty_m": 800
+  },
+  {
+   "case": 51,
+   "name": "Cummings",
+   "dist_m": 281,
+   "uncertainty_m": 400
+  },
+  {
+   "case": 55,
+   "name": "Two unnamed hikers",
+   "dist_m": 616,
+   "uncertainty_m": 300
+  },
+  {
+   "case": 60,
+   "name": "Guopeng 'Tony' Li",
+   "dist_m": 101,
+   "uncertainty_m": 600
+  },
+  {
+   "case": 65,
+   "name": "Two unnamed hikers",
+   "dist_m": 203,
+   "uncertainty_m": 400
+  },
+  {
+   "case": 81,
+   "name": "Two unnamed hikers",
+   "dist_m": 1915,
+   "uncertainty_m": 300
+  },
+  {
+   "case": 96,
+   "name": "Three unnamed hikers",
+   "dist_m": 252,
+   "uncertainty_m": 400
+  },
+  {
+   "case": 95,
+   "name": "Jessica Fournier-Chartrand and Annie Petrin",
+   "dist_m": 58,
+   "uncertainty_m": 800
+  },
+  {
+   "case": 14,
+   "name": "Kenneth Holmes",
+   "dist_m": 367,
+   "uncertainty_m": 500
+  },
+  {
+   "case": 85,
+   "name": "Gary Sullivan",
+   "dist_m": 47,
+   "uncertainty_m": 800
+  },
+  {
+   "case": 56,
+   "name": "Zeizler",
+   "dist_m": 218,
+   "uncertainty_m": 300
+  },
+  {
+   "case": 67,
+   "name": "Christopher Roma",
+   "dist_m": 2,
+   "uncertainty_m": 600
+  },
+  {
+   "case": 86,
+   "name": "Ryan O'Shea",
+   "dist_m": 600,
+   "uncertainty_m": 500
+  },
+  {
+   "case": 88,
+   "name": "Deborah VanPatten",
+   "dist_m": 400,
+   "uncertainty_m": 600
+  },
+  {
+   "case": 46,
+   "name": "Kate Matrosova",
+   "dist_m": 12,
+   "uncertainty_m": 300
+  },
+  {
+   "case": 68,
+   "name": "William Neal Donovan",
+   "dist_m": 2933,
+   "uncertainty_m": 600
+  },
+  {
+   "case": 82,
+   "name": "Two unnamed hikers",
+   "dist_m": 1199,
+   "uncertainty_m": 300
+  },
+  {
+   "case": 99,
+   "name": "Felipe Castanheira",
+   "dist_m": 0,
+   "uncertainty_m": 50
+  },
+  {
+   "case": 76,
+   "name": "Unnamed 72-year-old man",
+   "dist_m": 811,
+   "uncertainty_m": 300
+  },
+  {
+   "case": 89,
+   "name": "William Davis",
+   "dist_m": 774,
+   "uncertainty_m": 200
+  },
+  {
+   "case": 36,
+   "name": "Two unnamed hikers",
+   "dist_m": 3835,
+   "uncertainty_m": 300
+  },
+  {
+   "case": 77,
+   "name": "Katie Harris",
+   "dist_m": 3897,
+   "uncertainty_m": 300
+  },
+  {
+   "case": 97,
+   "name": "Horgan",
+   "dist_m": 398,
+   "uncertainty_m": 400
+  },
+  {
+   "case": 64,
+   "name": "Bradford Nelson",
+   "dist_m": 0,
+   "uncertainty_m": 300
+  },
+  {
+   "case": 58,
+   "name": "Jason Feierstin and Dylan Stahley",
+   "dist_m": 424,
+   "uncertainty_m": 300
+  },
+  {
+   "case": 90,
+   "name": "Steven Diroff and son",
+   "dist_m": 6635,
+   "uncertainty_m": 300
+  },
+  {
+   "case": 91,
+   "name": "Katherine Rosen",
+   "dist_m": 237,
+   "uncertainty_m": 300
+  }
+ ]
+}

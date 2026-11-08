@@ -1,0 +1,135 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -71.545764,
+     44.156278
+    ]
+   },
+   "properties": {
+    "type": "hotspot",
+    "t": 1794098715.473787,
+    "rank": 1,
+    "zone": "trail",
+    "row": 199,
+    "col": 200,
+    "elev_m": 1281.3,
+    "poa_250m": 0.4365,
+    "reasons": [
+     "trail",
+     "downstream",
+     "history"
+    ],
+    "contrib": {
+     "downstream": 0.807,
+     "stream": 0.021,
+     "trail": 1.0,
+     "alpine": 0.0,
+     "trap": 0.0,
+     "history": 0.084
+    }
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -71.54952,
+     44.157356
+    ]
+   },
+   "properties": {
+    "type": "hotspot",
+    "t": 1794098715.4910774,
+    "rank": 2,
+    "zone": "off-trail",
+    "row": 193,
+    "col": 185,
+    "elev_m": 1107.7,
+    "poa_250m": 0.1264,
+    "reasons": [
+     "downstream",
+     "trail",
+     "stream"
+    ],
+    "contrib": {
+     "downstream": 0.565,
+     "stream": 0.131,
+     "trail": 0.199,
+     "alpine": 0.0,
+     "trap": 0.0,
+     "history": 0.046
+    }
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -71.545513,
+     44.153583
+    ]
+   },
+   "properties": {
+    "type": "hotspot",
+    "t": 1794098715.4910774,
+    "rank": 3,
+    "zone": "off-trail",
+    "row": 214,
+    "col": 201,
+    "elev_m": 1354.3,
+    "poa_250m": 0.1154,
+    "reasons": [
+     "alpine",
+     "trail",
+     "history"
+    ],
+    "contrib": {
+     "downstream": 0.0,
+     "stream": 0.024,
+     "trail": 0.222,
+     "alpine": 0.485,
+     "trap": 0.0,
+     "history": 0.078
+    }
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -71.49593,
+     44.162746
+    ]
+   },
+   "properties": {
+    "type": "hotspot",
+    "t": 1794098715.4910774,
+    "rank": 4,
+    "zone": "off-trail",
+    "row": 163,
+    "col": 399,
+    "elev_m": 784.9,
+    "poa_250m": 0.0004,
+    "reasons": [
+     "stream"
+    ],
+    "contrib": {
+     "downstream": 0.0,
+     "stream": 0.6,
+     "trail": 0.0,
+     "alpine": 0.0,
+     "trap": 0.0,
+     "history": 0.001
+    }
+   }
+  }
+ ]
+}

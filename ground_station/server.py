@@ -3,9 +3,9 @@
 Ground-station map: one browser page that shows the search probability map, the pod's track,
 detections, beacon drops and RF hits on the height map, next to the Pi's live camera feed.
 
-  1. python search_hotspots/hotspots.py --trail "Franconia Ridge Loop" --out out/franconia_real
-  2. python ground_station/server.py --run out/franconia_real --camera http://<pi>:8080/
-  3. open http://localhost:8000   (teammates on the same Wi-Fi: http://<laptop-ip>:8000)
+  1. python ground_station/server.py --camera http://<pi>:8080/
+  2. open http://localhost:8000   (teammates on the same Wi-Fi: http://<laptop-ip>:8000)
+  3. start a search from the page (pick a trail or click the map)
 
 It reads JSON-lines logs every refresh (files are re-read, so anything appended shows up):
   pose_fix / ins_coast : {"type","t", "lat","lon" | "x","y" (UTM 19N m), "z", "source"}
@@ -140,17 +140,15 @@ def with_xy(d):
 
 
 class State:
-    def __init__(self, run, logs, footprint_m, pod, match_s):
+    def __init__(self, run, logs, footprint_m, pod, match_s, beacons=10):
         self.run, self.logs, self.footprint_m, self.pod, self.match_s = run, logs, footprint_m, pod, match_s
-        self.basemap = render_basemap(run)
-        self._cov_key, self._heat, self._cache = None, render_heat(run.prob), {}
+        self.beacons = beacons
+        self.basemap = render_basemap(run) if run else None      # no search area until the user starts one
+        self._cov_key, self._heat, self._cache = None, (render_heat(run.prob) if run else None), {}
         self._planner_next = None
         self.heat_version = 0
-        self.run_id = 0
+        self.run_id = 1 if run else 0
         self.lock = threading.Lock()
-        rad = max(1, int(footprint_m / run.cell_m))
-        yy, xx = np.mgrid[-rad:rad + 1, -rad:rad + 1]
-        self.disk = np.argwhere(yy ** 2 + xx ** 2 <= rad ** 2) - rad
 
     def switch(self, run):
         """Show a different search area (after a new simulation is set up)."""
@@ -161,19 +159,30 @@ class State:
             self.heat_version += 1
             self.run_id += 1
 
+    def clear(self):
+        """Back to the empty start screen: no search area."""
+        with self.lock:
+            self.run, self.basemap, self._heat = None, None, None
+            self._cov_key, self._cache, self._planner_next = None, {}, None
+            self.run_id += 1
+
     def build(self):
         with self.lock:
             return self._build()
 
     def _build(self):
         run = self.run
+        if run is None:                                            # waiting for the user to start a search
+            return dict(active=False, run_id=0, hotspots=[], track=[], detections=[], drops=[], rf_hits=[],
+                        events=[], next=None, status="idle", heat_version=0, now=time.time(),
+                        title="No active search")
         recs = read_logs(self.logs)
         track = []
         for r in recs:
             if r.get("type") in POSE_TYPES:
                 ll = to_latlon(r)
                 if ll:
-                    track.append(with_xy(dict(t=float(r.get("t", 0)), lat=ll[0], lon=ll[1],
+                    track.append(with_xy(dict(t=float(r.get("t", 0)), lat=ll[0], lon=ll[1], sim=r.get("sim"),
                                               z=r.get("z"), source=r.get("source", r.get("type")))))
         tt = np.array([p["t"] for p in track]) if track else np.array([])
 
@@ -190,10 +199,16 @@ class State:
         dets, drops, rfs, events = [], [], [], []
         for r in recs:
             ty = r.get("type")
+            if ty == "detection_note":
+                events.append(dict(r, placed="note")); continue
             if ty not in ("detection", "drop_event", "rf_hit"):
                 continue
             ll, how = place(r)
             item = with_xy(dict(r, lat=ll[0] if ll else None, lon=ll[1] if ll else None, placed=how))
+            if ty == "drop_event":
+                if len(drops) >= self.beacons:
+                    continue                                       # the pod can't drop more beacons than it carries
+                item["kind"] = r.get("kind") or "confirmed"       # drops without a kind count as a confirmed find
             {"detection": dets, "drop_event": drops, "rf_hit": rfs}[ty].append(item)
             events.append(item)
 
@@ -230,8 +245,11 @@ class State:
                 if track and abs(track[-1]["lat"] - lp["lat"]) * 111320 < nxt["size_m"] / 2 + 60 \
                         and abs(track[-1]["lon"] - lp["lon"]) * 111320 * 0.72 < nxt["size_m"] / 2 + 60:
                     nxt["label"] = "SEARCHING NOW"
-        if drops:
+        if any(d.get("kind") == "confirmed" for d in drops):
             status, nxt = "located", None
+        truth = next((with_xy(dict(r)) for r in reversed(recs) if r.get("type") == "sim_truth"), None)
+        if status not in ("located", "return"):
+            truth = None                                           # never reveal the answer mid-search
         for pr in plans:
             if pr.get("box"):
                 events.append(dict(pr, placed="logged"))
@@ -245,15 +263,17 @@ class State:
         b = run.bounds
         corners = dict(nw=latlon_to_utm(b["north"], b["west"]), ne=latlon_to_utm(b["north"], b["east"]),
                        sw=latlon_to_utm(b["south"], b["west"]))
-        return dict(title=run.title, bounds=run.bounds, corners=corners, size=list(run.prob.shape), hotspots=hs,
+        return dict(active=True, title=run.title, bounds=run.bounds, corners=corners, size=list(run.prob.shape), hotspots=hs,
                     track=track[-5000:], detections=dets, drops=drops, rf_hits=rfs,
                     events=[dict(t=e.get("t"), type=e.get("type"), cls=e.get("cls"), color=e.get("color"),
                                  confidence=e.get("confidence"), beacon_id=e.get("beacon_id"), hz=e.get("hz"),
                                  power_db=e.get("power_db"), note=e.get("note"), placed=e["placed"],
+                                 kind=e.get("kind"), reason=e.get("reason"), beacons_left=e.get("beacons_left"),
                                  box=e.get("box"), poa=e.get("poa"))
                             for e in sorted([e for e in events if e.get("type") != "rf_hit"] + rfs[-8:],
                                             key=lambda e: float(e.get("t", 0)))[-40:]],
-                    heat_version=self.heat_version, run_id=self.run_id, now=time.time(), next=nxt, status=status,
+                    heat_version=self.heat_version, run_id=self.run_id, now=time.time(), next=nxt, status=status, truth=truth,
+                    beacons_total=self.beacons, beacons_left=max(0, self.beacons - len(drops)),
                     **self._cache)
 
 
@@ -269,16 +289,33 @@ class SimJob:
             self.stage, self.message = "done", "Simulation finished. Pick another place to run again."
         return dict(stage=self.stage, message=self.message, label=self.label)
 
+    def reset(self):
+        """Stop the pod and wipe the simulated flight, so the map shows a fresh, unsearched area."""
+        self.cancelled = True                                  # a search map still being built is thrown away
+        if self.proc and self.proc.poll() is None:
+            self.proc.terminate()
+            try:
+                self.proc.wait(timeout=5)
+            except Exception:
+                pass
+        log = os.path.join(HERE, "logs", "sim_flight.jsonl")
+        if os.path.exists(log):
+            os.remove(log)
+        self.state.clear()
+        self.stage, self.message = "idle", ""
+        return True, "ok"
+
     def stop(self):
         if self.proc and self.proc.poll() is None:
             self.proc.terminate()
         if self.stage == "flying":
             self.stage, self.message = "done", "Simulation stopped."
 
-    def start(self, trail, lat, lon, speed, seed):
+    def start(self, trail, lat, lon, speed, seed, hiker="realistic"):
+        self.hiker = hiker
         if self.busy:
             return False, "Still setting up the previous simulation, wait a moment."
-        self.busy = True
+        self.busy, self.cancelled = True, False
         threading.Thread(target=self._run, args=(trail, lat, lon, speed, seed), daemon=True).start()
         return True, "ok"
 
@@ -300,13 +337,18 @@ class SimJob:
                 self.stage = "error"
                 self.message = "Could not build the search map: " + (r.stderr or r.stdout).strip().splitlines()[-1:][0][:300]
                 return
+            if getattr(self, "cancelled", False):          # the search was reset while the map was building
+                self.stage, self.message = "idle", ""
+                return
             warn = "Warning: height map not found, so this uses synthetic terrain. " if "synthetic" in r.stdout else ""
             self.state.switch(Run(out_dir))
             log = os.path.join(HERE, "logs", "sim_flight.jsonl")
             if os.path.exists(log):
                 os.remove(log)
             self.proc = subprocess.Popen([sys.executable, os.path.join(HERE, "simulate_flight.py"), "--run", out_dir,
-                                          "--live", str(speed), "--seed", str(seed), "--out", log],
+                                          "--live", str(speed), "--seed", str(seed), "--out", log,
+                                          "--hiker", getattr(self, "hiker", "realistic"),
+                                          "--beacons", str(self.state.beacons)],
                                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.stage = "flying"
             self.message = warn + f"Pod is searching near {self.label} ({speed}x speed)."
@@ -381,9 +423,9 @@ def make_handler(state, camera, region_png=None, region_meta=None, lock=None, jo
                     self.send(json.dumps(places).encode(), "application/json")
                 elif path == "/api/trails":
                     self.send(json.dumps(trails).encode(), "application/json")
-                elif path == "/basemap.png":
+                elif path == "/basemap.png" and state.basemap:
                     self.send(state.basemap, "image/png")
-                elif path == "/heat.png":
+                elif path == "/heat.png" and state._heat:
                     self.send(state._heat, "image/png")
                 else:
                     self.send(b"not found", "text/plain", 404)
@@ -398,6 +440,10 @@ def make_handler(state, camera, region_png=None, region_meta=None, lock=None, jo
                 body = json.loads(self.rfile.read(n) or b"{}") if n else {}
                 if path == "/api/stop" and job:
                     job.stop(); self.send(b'{"ok":true}', "application/json")
+                elif path == "/api/reset" and job:
+                    ok, msg = job.reset()
+                    self.send(json.dumps(dict(ok=ok, error=None if ok else msg)).encode(), "application/json",
+                              200 if ok else 409)
                 elif path == "/api/simulate" and job:
                     trail = body.get("trail") or None
                     if trail and trail not in names:
@@ -414,7 +460,8 @@ def make_handler(state, camera, region_png=None, region_meta=None, lock=None, jo
                                          "application/json", 400)
                     speed = max(1, min(200, int(body.get("speed", 20))))
                     seed = int(body["seed"]) if str(body.get("seed", "")).strip().isdigit() else random.randint(1, 9999)
-                    ok, msg = job.start(trail, lat, lon, speed, seed)
+                    hiker = body.get("hiker") if body.get("hiker") in ("realistic", "model") else "realistic"
+                    ok, msg = job.start(trail, lat, lon, speed, seed, hiker)
                     self.send(json.dumps(dict(ok=ok, error=None if ok else msg, seed=seed)).encode(), "application/json",
                               200 if ok else 409)
                 else:
@@ -428,7 +475,9 @@ def make_handler(state, camera, region_png=None, region_meta=None, lock=None, jo
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--run", default=os.path.join(ROOT, "out", "franconia_real"), help="hotspots.py output folder")
+    ap.add_argument("--run", default=None,
+                    help="optional: open with this hotspots.py output folder already loaded "
+                         "(default: start empty and wait for the user to start a search on the page)")
     ap.add_argument("--logs", nargs="*", default=[os.path.join(HERE, "logs", "*.jsonl"),
                                                    os.path.join(ROOT, "detections.jsonl")])
     ap.add_argument("--camera", default="", help="Pi MJPEG feed, e.g. http://<pi>:8080/")
@@ -440,12 +489,16 @@ def main():
                     help="overview map PNG with a .pgw world file (EPSG:26919)")
     ap.add_argument("--footprint-m", type=float, default=60, help="camera ground footprint radius")
     ap.add_argument("--pod", type=float, default=0.7, help="probability of detection inside the footprint")
+    ap.add_argument("--beacons", type=int, default=10, help="beacons the pod carries")
     ap.add_argument("--match-s", type=float, default=10, help="max time gap to pin a detection to the track")
     a = ap.parse_args()
-    if not os.path.exists(os.path.join(a.run, "grid.json")):
+    if a.run and not os.path.exists(os.path.join(a.run, "grid.json")):
         sys.exit(f"{a.run}/grid.json not found - re-run search_hotspots/hotspots.py (current version) first.")
     os.makedirs(os.path.join(HERE, "logs"), exist_ok=True)
-    state = State(Run(a.run), a.logs, a.footprint_m, a.pod, a.match_s)
+    old_sim = os.path.join(HERE, "logs", "sim_flight.jsonl")
+    if os.path.exists(old_sim):                                    # every session starts clean
+        os.remove(old_sim)
+    state = State(Run(a.run) if a.run else None, a.logs, a.footprint_m, a.pod, a.match_s, a.beacons)
     region_png, region_meta = load_region(a.basemap)
     lock = None
     spec = (a.lock or "none").lower()
