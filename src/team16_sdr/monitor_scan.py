@@ -134,7 +134,7 @@ def bt_sightings(adapter, seconds):
                 devices[mac] = {"name": name, "rssi": None}
                 continue
             m = re.search(r"\[CHG\] Device ((?:[0-9A-F]{2}:){5}[0-9A-F]{2}) "
-                          r"RSSI: (-?\d+)", line, re.I)
+                          r"RSSI: (?:0x[0-9A-Fa-f]+ )?\(?(-?\d+)\)?", line, re.I)
             if m:
                 mac = m.group(1).lower()
                 d = devices.setdefault(mac, {"name": None, "rssi": None})

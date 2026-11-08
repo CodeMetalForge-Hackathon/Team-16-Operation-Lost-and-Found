@@ -6,8 +6,10 @@ After=network-online.target pod-bait.service rf-hub.service
 Type=simple
 WorkingDirectory=/home/hacker/team16_sdr
 # tcpdump (wifi feed) needs root; Alfa into monitor mode on ch1 (bait AP).
-ExecStartPre=/usr/bin/bash -c 'nmcli device disconnect wlx00c0cabea289 2>/dev/null; ip link set wlx00c0cabea289 down; iw dev wlx00c0cabea289 set type monitor; ip link set wlx00c0cabea289 up; iw dev wlx00c0cabea289 set channel 1'
-ExecStart=/usr/bin/python3 /home/hacker/team16_sdr/monitor_scan.py --iface wlx00c0cabea289 --adapter hci0,hci1 --out /home/hacker/team16_sdr/monitor_hits.jsonl
+ExecStartPre=/usr/bin/bash -c 'nmcli device disconnect wlx00c0cabea289 2>/dev/null; ip link set wlx00c0cabea289 down; iw dev wlx00c0cabea289 set type monitor; ip link set wlx00c0cabea289 up; iw dev wlx00c0cabea289 set channel 1; true'
+# Wait for the Realtek NIC's BT (hci2, btusb) to enumerate before starting.
+ExecStartPre=/bin/sh -c 'timeout 30 sh -c "until [ -e /sys/class/bluetooth/hci2 ]; do sleep 1; done" || true'
+ExecStart=/usr/bin/python3 /home/hacker/team16_sdr/monitor_scan.py --iface wlx00c0cabea289 --adapter hci2 --out /home/hacker/team16_sdr/monitor_hits.jsonl
 Restart=on-failure
 RestartSec=5
 
