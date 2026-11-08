@@ -86,47 +86,6 @@
       </article>
     </section>
 
-    <section class="beacon-card" id="beacon-card" aria-label="DF beacon telemetry">
-      <header class="card-header">
-        <div>
-          <p class="card-kicker">DF BEACON · LORA 915 MHZ</p>
-          <h2>Transmitter health &amp; pings</h2>
-        </div>
-        <span class="feed-state" id="beacon-state" data-state="idle">Idle</span>
-      </header>
-      <div class="tiles" id="beacon-tiles">
-        <div class="tile" id="t-link"><span class="tile-label">Link</span><strong id="b-link">&mdash;</strong></div>
-        <div class="tile"><span class="tile-label">Last heard</span><strong id="b-age">&mdash;</strong></div>
-        <div class="tile"><span class="tile-label">Signal (RSSI)</span><strong id="b-rssi-now">&mdash;</strong></div>
-        <div class="tile"><span class="tile-label">SNR</span><strong id="b-snr">&mdash;</strong></div>
-        <div class="tile"><span class="tile-label">Packet loss (60 s)</span><strong id="b-loss">&mdash;</strong></div>
-        <div class="tile"><span class="tile-label">Pings / min</span><strong id="b-rate">&mdash;</strong></div>
-        <div class="tile"><span class="tile-label">Beacon uptime</span><strong id="b-uptime">&mdash;</strong></div>
-        <div class="tile"><span class="tile-label">Battery</span><strong id="b-batt">&mdash;</strong></div>
-        <div class="tile"><span class="tile-label">SDR power</span><strong id="b-sdr-now">&mdash;</strong></div>
-        <div class="tile"><span class="tile-label">Beacon ID</span><strong id="b-id">&mdash;</strong></div>
-      </div>
-      <div class="beacon-charts">
-        <figure>
-          <figcaption>Signal strength, last 5 min <small>(dBm, higher is closer)</small></figcaption>
-          <canvas id="c-rssi" role="img" aria-label="Signal strength chart"></canvas>
-        </figure>
-        <figure>
-          <figcaption>SDR power at 915 MHz <small id="b-sdr-note">no SDR connected</small></figcaption>
-          <canvas id="c-sdr" role="img" aria-label="SDR power chart"></canvas>
-        </figure>
-        <div class="ping-log">
-          <p class="tile-label">Recent pings</p>
-          <ol id="b-pings"><li class="muted">Waiting for the first ping&hellip;</li></ol>
-        </div>
-      </div>
-      <p class="cal-status" id="beacon-note" role="status" aria-live="polite">Beacon feed: unknown until connected</p>
-      <footer class="card-footer">
-        <span class="endpoint">BEACON FEED · :8083</span>
-        <div class="actions"><button type="button" id="beacon-retry">Retry</button></div>
-      </footer>
-    </section>
-
     <section class="beacon-card" id="sdr-card" aria-label="SDR phone detection">
       <header class="card-header">
         <div>

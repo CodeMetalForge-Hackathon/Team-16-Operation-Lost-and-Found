@@ -80,7 +80,6 @@ function connectAll() {
   cards.forEach((card) => connectCard(card, host));
   pollCalibration(host, document.querySelector("[data-action=recalibrate]"));
   watchFeeds(host);
-  pollBeacon(host);
   pollSdr(host);
   pollMap(host);
   pollIns();
@@ -190,21 +189,6 @@ async function startCalibration(card, host) {
   }
 }
 
-// ---------------------------------------------------------------- DF beacon telemetry (:8083)
-const beaconEls = {
-  state: document.querySelector("#beacon-state"), note: document.querySelector("#beacon-note"),
-  link: document.querySelector("#b-link"), age: document.querySelector("#b-age"),
-  rssi: document.querySelector("#b-rssi-now"), snr: document.querySelector("#b-snr"),
-  loss: document.querySelector("#b-loss"), rate: document.querySelector("#b-rate"),
-  uptime: document.querySelector("#b-uptime"), batt: document.querySelector("#b-batt"),
-  sdr: document.querySelector("#b-sdr-now"), id: document.querySelector("#b-id"),
-  sdrNote: document.querySelector("#b-sdr-note"), pings: document.querySelector("#b-pings"),
-  retry: document.querySelector("#beacon-retry"),
-};
-let beaconTimer = null;
-let beaconHost = "";
-let beaconFails = 0;
-
 function setTile(el, text, cls) {
   el.textContent = text;
   el.className = cls || "";
@@ -273,95 +257,6 @@ function drawChart(canvas, points, opts) {
     for (const p of points) { g.beginPath(); g.arc(x(p.t), y(p.v), 2, 0, 6.3); g.fill(); }
   }
 }
-
-function renderBeacon(d) {
-  const linkText = { strong: "STRONG", ok: "OK", weak: "WEAK", sdr: "SDR DETECTED", lost: "LOST", none: "NO SIGNAL YET" }[d.link] || d.link;
-  const linkCls = { strong: "good", ok: "good", weak: "warn", sdr: "good", lost: "bad", none: "bad" }[d.link];
-  const live = d.link === "strong" || d.link === "ok" || d.link === "weak" || d.link === "sdr";
-  beaconEls.state.dataset.state = live ? "live" : (d.link === "none" ? "idle" : "error");
-  beaconEls.state.textContent = d.link === "sdr" ? "Receiving (SDR)" : live ? "Receiving" : (d.link === "none" ? "Waiting" : "Lost");
-  setTile(beaconEls.link, linkText, linkCls);
-  const heard = d.link === "sdr" && d.sdr ? d.sdr.last_detect_age_s : d.age_s;
-  setTile(beaconEls.age, heard == null ? "—" : heard + " s ago" + (d.link === "sdr" ? " (SDR)" : ""), heard != null && heard > 10 ? "bad" : "");
-  const L = d.latest, S = d.stats;
-  if (L && d.link !== "sdr") setTile(beaconEls.rssi, L.rssi + " dBm", linkCls);
-  else if (d.sdr) setTile(beaconEls.rssi, d.sdr.power_dbm + " " + (d.sdr.unit || "dBm") + " (SDR)", linkCls);
-  else setTile(beaconEls.rssi, "—", linkCls);
-  setTile(beaconEls.snr, L ? L.snr + " dB" : "—", L && L.snr < 0 ? "warn" : "");
-  const loss = S.loss_pct_60s;
-  setTile(beaconEls.loss, loss == null ? "—" : loss + " %", loss == null ? "" : loss > 25 ? "bad" : loss > 8 ? "warn" : "good");
-  setTile(beaconEls.rate, String(S.rate_per_min));
-  setTile(beaconEls.uptime, L ? fmtDuration(L.uptime) : "—");
-  if (L && L.mv) {
-    const pct = Math.max(0, Math.min(100, Math.round((L.mv - 3300) / 9)));
-    setTile(beaconEls.batt, (L.mv / 1000).toFixed(2) + " V (" + pct + "%)", pct < 15 ? "bad" : pct < 35 ? "warn" : "good");
-  } else {
-    setTile(beaconEls.batt, "—");
-  }
-  setTile(beaconEls.id, L ? L.id : "—");
-  if (d.sdr) {
-    const u = d.sdr.unit || "dBm";
-    setTile(beaconEls.sdr, d.sdr.power_dbm + " " + u, d.sdr.detected ? "good" : "");
-    beaconEls.sdrNote.textContent = d.sdr.detected
-      ? "beacon detected, +" + d.sdr.over_floor_db + " dB over the noise floor"
-      : "noise floor " + d.sdr.noise_floor_dbm + " " + u + ", no beacon seen";
-  } else {
-    setTile(beaconEls.sdr, "—");
-    beaconEls.sdrNote.textContent = "no SDR connected";
-  }
-  beaconEls.note.className = "cal-status " + (live ? "ok" : "bad");
-  beaconEls.note.textContent = "Sources: " + (d.sources.length ? d.sources.join(", ") : "none") +
-    " · received " + S.received_total + ", missed " + S.lost_total +
-    (S.rssi_best_5min != null ? " · best signal (5 min) " + S.rssi_best_5min + " dBm" : "");
-  beaconEls.pings.replaceChildren();
-  if (!d.packets.length) {
-    const li = document.createElement("li");
-    li.className = "muted"; li.textContent = "Waiting for the first ping…";
-    beaconEls.pings.append(li);
-  }
-  for (const p of d.packets) {
-    const li = document.createElement("li");
-    if (p.lost_before) li.className = "gap";
-    const when = new Date(p.t * 1000).toLocaleTimeString([], { hour12: false });
-    const left = document.createElement("span");
-    left.textContent = when + " #" + p.seq + (p.lost_before ? " (" + p.lost_before + " missed)" : "");
-    const right = document.createElement("span");
-    right.textContent = p.rssi + " dBm";
-    li.append(left, right);
-    beaconEls.pings.append(li);
-  }
-  drawChart(document.querySelector("#c-rssi"), d.history.map((p) => ({ t: p.t, v: p.rssi })),
-            { range: [-130, -70], step: 10, color: "--green", gap: 6, dots: true, empty: "no pings yet" });
-  const sd = d.sdr ? d.sdr.history.map((p) => ({ t: p.t, v: p.p })) : [];
-  const vals = sd.map((p) => p.v);
-  const lo = vals.length ? Math.floor((Math.min(...vals) - 3) / 10) * 10 : -120;
-  const hi = vals.length ? Math.max(lo + 30, Math.ceil((Math.max(...vals) + 3) / 10) * 10) : -60;
-  drawChart(document.querySelector("#c-sdr"), sd,
-            { range: [lo, hi], step: 10, color: "--cyan", gap: 3, dots: false, floor: d.sdr ? d.sdr.noise_floor_dbm : null, empty: "no SDR data" });
-}
-
-async function pollBeacon(host) {
-  clearTimeout(beaconTimer);
-  beaconHost = host;
-  try {
-    const response = await fetch("http://" + host + ":8083/beacon", { cache: "no-store" });
-    if (!response.ok) throw new Error("HTTP " + response.status);
-    beaconFails = 0;
-    renderBeacon(await response.json());
-  } catch {
-    beaconFails += 1;
-    beaconEls.state.dataset.state = beaconFails > 2 ? "error" : "connecting";
-    beaconEls.state.textContent = beaconFails > 2 ? "Unavailable" : "Connecting";
-    beaconEls.note.className = "cal-status bad";
-    beaconEls.note.textContent = "Could not reach the beacon feed on the Pi (port 8083)";
-  }
-  if (beaconHost === host) beaconTimer = setTimeout(() => pollBeacon(host), 1000);
-}
-
-beaconEls.retry.addEventListener("click", () => {
-  const host = normalizeHost(hostInput.value);
-  if (host) { beaconFails = 0; pollBeacon(host); } else hostInput.focus();
-});
 
 // ---------------------------------------------------------------- SDR phone detect (:8085, bridge to the rf hub)
 const sdrEls = {
