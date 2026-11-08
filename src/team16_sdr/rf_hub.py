@@ -6,7 +6,10 @@ out by record kind into --dir (default ~/rfhits):
 
   kind bt                 -> bt_classic.jsonl   0.0.0.0:8091  cat "bt"
   kind ble                -> ble.jsonl          0.0.0.0:8092  cat "ble"
-  hz, no kind (rf file)   -> cellular.jsonl     0.0.0.0:8093  cat "cell"
+  hz, no kind (rf file)   -> cellular.jsonl  0.0.0.0:8093  cat "cell"
+                           (only inside US uplink allocations; tower
+                            downlink carriers are dropped, even when
+                            the log is re-read from offset 0)
   kind wifi-probe/assoc   -> wifi.jsonl         0.0.0.0:8094  cat "wifi"
 
 Any other kind (coax-window, unknown) is ignored: not written, not
@@ -27,7 +30,7 @@ import sys
 import threading
 import time
 
-from phone_phone import read_new
+from phone_phone import is_uplink, read_new
 
 # (cat, filename, port) -- ports 8091-8094 confirmed free on the Pi.
 CATS = [
@@ -50,7 +53,7 @@ Every phone-detect hit lands here, split by category. `rf_hub.py`
 |---|---|---|
 | `rf-feed-monitor.service` (root) | `monitor_scan.py` (Alfa ch1 monitor + hci2 = Realtek NIC BT) | wifi, bt, ble |
 | `rf-feed-cell.service` (hacker) | `phone_scan.py` (Pluto 1 uplink dwell: B7/B4/B12) | cell |
-| `rf-feed-cell2.service` (hacker) | `phone_scan.py` (Pluto 2 uplink dwell: B13/B29/B71) | cell |
+| `rf-feed-cell2.service` (hacker) | `phone_scan.py` (Pluto 2 uplink dwell: B13/B5/B71) | cell |
 
 `run_pod.sh` pkills `phone_scan.py` for its demo window; the cell feed
 services then flap (Pluto lock busy, rc=1) until the demo ends and
@@ -126,7 +129,7 @@ def route(rec):
     if kind in ("wifi-probe", "wifi-assoc"):
         return "wifi"
     if kind is None and "hz" in rec:
-        return "cell"
+        return "cell" if is_uplink(rec["hz"]) else None
     return None
 
 

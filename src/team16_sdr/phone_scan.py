@@ -19,8 +19,8 @@ import numpy as np
 GROUP_HZ = 1_000_000  # bin-group width for hit detection
 FULL_SCALE = 2048.0   # 12-bit IQ full scale
 PLUTO_LOCK = "/tmp/pluto-sdr.lock"  # /tmp: reboot-clean (default, bare usb:)
-UL_RANGES_MHZ = ("663-716,777-788,824-849,1710-1755,1850-1920,2502-2570")
-# US uplink allocations (B71/B12/B13/B29, Cellular 850, AWS/B4/B2, PCS,
+UL_RANGES_MHZ = ("663-716,777-788,824-849,1710-1755,1850-1915,2502-2570")
+# US uplink allocations (B71/B12/B17, B13, Cellular 850, AWS/B4/B2, PCS,
 # B7). A 20 MHz dwell window catches neighbouring DOWNLINK carriers (the
 # receiver has no RF selectivity at these offsets); hits outside these
 # ranges are towers/infra, not phone PRACH, and are dropped.

@@ -29,9 +29,11 @@ import time
 from monitor_scan import emit
 
 BAIT_SSID = "Low Quality Bait"
-# B12, B5, B4, B2, B7 uplinks; matches phone_scan.py --channels defaults.
-UPLINK_HZ = [(707e6, 716e6), (837e6, 846e6), (1730e6, 1755e6),
-             (1850e6, 1915e6), (2535e6, 2585e6)]
+# US uplink ALLOCATIONS (B71/B12/B17, B13, Cellular 850, AWS/B4/B2, PCS,
+# B7); matches phone_scan.py --ul-ranges defaults. B29 (717-728) is
+# downlink-only, so 722-728 hits are towers, not phones.
+UPLINK_HZ = [(663e6, 716e6), (777e6, 788e6), (824e6, 849e6),
+             (1710e6, 1755e6), (1850e6, 1915e6), (2502e6, 2570e6)]
 
 
 def read_new(path, offset):

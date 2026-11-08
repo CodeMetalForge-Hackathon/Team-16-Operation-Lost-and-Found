@@ -11,7 +11,7 @@ Cellular uplink scanner (Pluto, RX-only): `python3 phone_scan.py --uri usb:` dwe
 B7/B4/B12), prints
 `rf_hit` JSON lines (`t`, `hz`, `power_db`, `pose`) on energy above the noise floor,
 and appends them to `rf_hits.jsonl`. Hits are kept only inside US uplink
-allocations (`--ul-ranges`, default 663-716/777-788/824-849/1710-1755/1850-1920/2502-2570
+allocations (`--ul-ranges`, default 663-716/777-788/824-849/1710-1755/1850-1915/2502-2570
 MHz): a 20 MHz dwell window also catches neighbouring downlink carriers (towers),
 which are dropped. Walk-log proximity: `python3 walk_log.py
 --role log` (Enter to sample, type a position) then `python3 walk_log.py --role
