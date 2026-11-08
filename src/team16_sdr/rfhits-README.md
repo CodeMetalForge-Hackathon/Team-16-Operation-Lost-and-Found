@@ -48,6 +48,8 @@ Identifiers and signal ride along from the source: `mac`, `name`,
   a real reading.
 - `run_pod.sh` truncates the source logs at each demo start; the hub
   notices the shrink and resets its read offsets automatically.
+- Each `*.jsonl` is purged (truncated to empty) once it reaches
+  `--max-mb` (default 5120 = 5 GiB) so the disk never fills up.
 
 ## Ideas (not implemented)
 
@@ -56,5 +58,5 @@ Identifiers and signal ride along from the source: `mac`, `name`,
   the discriminator.
 - `--replay N` to send the last N file lines on connect once the
   dashboard wants history.
-- Log rotation for `~/rfhits/*.jsonl` (grows unbounded; ~120 lines/min
-  at demo rates).
+- Log rotation for `~/rfhits/*.jsonl` (the 5 GiB purge is a blunt
+  instrument; ~120 lines/min at demo rates).

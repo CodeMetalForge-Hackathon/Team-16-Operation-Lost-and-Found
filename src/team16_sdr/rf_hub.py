@@ -87,6 +87,8 @@ Identifiers and signal ride along from the source: `mac`, `name`,
   a real reading.
 - `run_pod.sh` truncates the source logs at each demo start; the hub
   notices the shrink and resets its read offsets automatically.
+- Each `*.jsonl` is purged (truncated to empty) once it reaches
+  `--max-mb` (default 5120 = 5 GiB) so the disk never fills up.
 
 ## Ideas (not implemented)
 
@@ -95,8 +97,8 @@ Identifiers and signal ride along from the source: `mac`, `name`,
   the discriminator.
 - `--replay N` to send the last N file lines on connect once the
   dashboard wants history.
-- Log rotation for `~/rfhits/*.jsonl` (grows unbounded; ~120 lines/min
-  at demo rates).
+- Log rotation for `~/rfhits/*.jsonl` (the 5 GiB purge is a blunt
+  instrument; ~120 lines/min at demo rates).
 """
 
 
@@ -117,7 +119,8 @@ def route(rec):
 class Broadcaster:
     """Append lines to one category file; push each to its TCP clients."""
 
-    def __init__(self, path):
+    def __init__(self, path, max_bytes):
+        self.max_bytes = max_bytes
         self.lock = threading.Lock()
         self.clients = []
         self.f = open(path, "a", encoding="utf-8")
@@ -127,6 +130,9 @@ class Broadcaster:
         with self.lock:
             self.f.write(line + "\n")
             self.f.flush()
+            if self.f.tell() >= self.max_bytes:
+                self.f.truncate(0)  # purge in place (same inode)
+                self.f.seek(0)
             dead = []
             for sock in self.clients:
                 try:
@@ -178,6 +184,8 @@ def main():
     ap.add_argument("--dir", default="~/rfhits")
     ap.add_argument("--poll", type=float, default=0.25,
                     help="tail poll interval, s")
+    ap.add_argument("--max-mb", type=float, default=5120.0,
+                    help="purge a category file at this size, MiB")
     args = ap.parse_args()
     monitor = os.path.expanduser(args.monitor)
     rf = os.path.expanduser(args.rf)
@@ -193,7 +201,8 @@ def main():
     servers = []
     for cat, fname, port in CATS:
         srv = Server(("127.0.0.1", port), Handler)
-        srv.broadcaster = Broadcaster(os.path.join(outdir, fname))
+        srv.broadcaster = Broadcaster(os.path.join(outdir, fname),
+                                      int(args.max_mb * 1024 * 1024))
         bcasts[cat] = srv.broadcaster
         threading.Thread(target=srv.serve_forever, daemon=True).start()
         servers.append(srv)
