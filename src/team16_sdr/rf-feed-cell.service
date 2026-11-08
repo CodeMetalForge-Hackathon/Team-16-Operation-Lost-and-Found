@@ -1,0 +1,15 @@
+[Unit]
+Description=Team16 rfhits feed (cellular Pluto uplink dwell)
+After=network-online.target rf-hub.service
+
+[Service]
+Type=simple
+User=hacker
+WorkingDirectory=/home/hacker/team16_sdr
+# hacker has libiio USB access (no sudo); Pluto stays receive-only.
+ExecStart=/usr/bin/python3 /home/hacker/team16_sdr/phone_scan.py --uri usb: --gain 40 --out /home/hacker/team16_sdr/rf_hits.jsonl
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -44,6 +44,17 @@ Every phone-detect hit lands here, split by category. `rf_hub.py`
 (systemd: `rf-hub.service`) tails `~/team16_sdr/monitor_hits.jsonl` and
 `~/team16_sdr/rf_hits.jsonl` and fans records out by kind.
 
+## Feeds (start on boot, stay up)
+
+| Unit | Runs | Feeds |
+|---|---|---|
+| `rf-feed-monitor.service` (root) | `monitor_scan.py` (Alfa ch1 monitor + hci0/hci1) | wifi, bt, ble |
+| `rf-feed-cell.service` (hacker) | `phone_scan.py` (Pluto uplink dwell) | cell |
+
+`run_pod.sh` pkills `phone_scan.py` for its demo window; the cell feed
+service then flaps (Pluto lock busy, rc=1) until the demo ends and
+restarts itself into ownership. Harmless.
+
 ## Files (newline-delimited JSON, one hit per line)
 
 | File | Source records |

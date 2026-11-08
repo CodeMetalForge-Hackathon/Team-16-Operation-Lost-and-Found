@@ -1,0 +1,15 @@
+[Unit]
+Description=Team16 rfhits feed (wifi + bt + ble monitor)
+After=network-online.target pod-bait.service rf-hub.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/hacker/team16_sdr
+# tcpdump (wifi feed) needs root; Alfa into monitor mode on ch1 (bait AP).
+ExecStartPre=/usr/bin/bash -c 'nmcli device disconnect wlx00c0cabea289 2>/dev/null; ip link set wlx00c0cabea289 down; iw dev wlx00c0cabea289 set type monitor; ip link set wlx00c0cabea289 up; iw dev wlx00c0cabea289 set channel 1'
+ExecStart=/usr/bin/python3 /home/hacker/team16_sdr/monitor_scan.py --iface wlx00c0cabea289 --adapter hci0,hci1 --out /home/hacker/team16_sdr/monitor_hits.jsonl
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

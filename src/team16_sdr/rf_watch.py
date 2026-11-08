@@ -76,15 +76,24 @@ def watch(host, port, cat, stop):
 def main():
     ap = argparse.ArgumentParser(description="Watch rfhits hub ports live.")
     ap.add_argument("--host", default="192.168.8.163")
+    ap.add_argument("--cats", default="bt,ble,cell,wifi",
+                    help="comma list of categories to watch "
+                         "(bt, ble, cell, wifi)")
     args = ap.parse_args()
+    wanted = [c.strip() for c in args.cats.split(",") if c.strip()]
+    bad = [c for c in wanted if c not in {c for _, c in PORTS}]
+    if bad:
+        ap.error(f"unknown categor{'y' if len(bad) == 1 else 'ies'}: "
+                 f"{', '.join(bad)} (choose from bt, ble, cell, wifi)")
+    ports = [(p, c) for p, c in PORTS if c in wanted]
     stop = threading.Event()
     threads = [threading.Thread(target=watch,
                                 args=(args.host, port, cat, stop),
                                 daemon=True)
-               for port, cat in PORTS]
+               for port, cat in ports]
     for t in threads:
         t.start()
-    print(f"watching {args.host}: " + ", ".join(f"{p}={c}" for p, c in PORTS)
+    print(f"watching {args.host}: " + ", ".join(f"{p}={c}" for p, c in ports)
           + "  (Ctrl-C to quit)", flush=True)
     try:
         while True:
