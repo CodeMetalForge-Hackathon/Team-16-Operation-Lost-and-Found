@@ -7,9 +7,9 @@ out by record kind into --dir (default ~/rfhits):
   kind bt                 -> bt_classic.jsonl   0.0.0.0:8091  cat "bt"
   kind ble                -> ble.jsonl          0.0.0.0:8092  cat "ble"
   hz, no kind (rf file)   -> cellular.jsonl  0.0.0.0:8093  cat "cell"
-                           (only inside US uplink allocations; tower
-                            downlink carriers are dropped, even when
-                            the log is re-read from offset 0)
+                           (only inside US uplink allocations -- tower
+                            downlink carriers are dropped, even when a
+                            hub restart re-reads the log from offset 0)
   kind wifi-probe/assoc   -> wifi.jsonl         0.0.0.0:8094  cat "wifi"
 
 Any other kind (coax-window, unknown) is ignored: not written, not
