@@ -1,0 +1,11 @@
+{
+ "lat0": 44.31632172715295,
+ "lon0": -71.36055347665973,
+ "dlat": -0.00017966223499820338,
+ "dlon": 0.0002508717488057025,
+ "rows": 600,
+ "cols": 600,
+ "dx": 19.99996947687612,
+ "dy": 20.0,
+ "title": "Mt. Washington via Tuckerman - search probability (dem terrain)"
+}

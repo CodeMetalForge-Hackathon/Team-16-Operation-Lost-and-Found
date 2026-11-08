@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team 16 Ground Station</title>
+<style>
+  :root { --bg:#0f1216; --panel:#171b21; --line:#2a313a; --text:#e6e9ee; --muted:#8b95a3;
+          --hot:#ff7a2f; --trail:#7CFC00; --off:#38d6ff; --drop:#ff3b5c; --rf:#b388ff; --next:#ffd23f; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui, Segoe UI, Arial, sans-serif; }
+  header { display:flex; align-items:baseline; gap:16px; padding:10px 16px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:17px; margin:0; }
+  header .sub { color:var(--muted); font-size:13px; }
+  header .clock { margin-left:auto; color:var(--muted); font-variant-numeric:tabular-nums; }
+  main { display:grid; grid-template-columns:minmax(0,1fr) 420px; gap:12px; padding:12px; height:calc(100vh - 50px); }
+  @media (max-width:1000px) { main { grid-template-columns:1fr; height:auto; } }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  #mapwrap { position:relative; min-height:420px; }
+  canvas { width:100%; height:100%; display:block; cursor:grab; touch-action:none; }
+  canvas.drag { cursor:grabbing; }
+  .tools { position:absolute; top:10px; left:10px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .tools button, .tools label { background:rgba(15,18,22,.85); color:var(--text); border:1px solid var(--line);
+          border-radius:6px; padding:5px 10px; font:inherit; font-size:12.5px; cursor:pointer; }
+  .tools button.on { border-color:var(--next); color:var(--next); }
+  .tools input { vertical-align:-2px; margin-right:4px; }
+  .hint { position:absolute; bottom:10px; right:12px; color:var(--muted); font-size:12px;
+          background:rgba(15,18,22,.7); padding:3px 8px; border-radius:5px; }
+  .side { display:flex; flex-direction:column; gap:12px; min-height:0; overflow:auto; }
+  .side > .card { flex-shrink:0; }
+  .cam img { width:100%; display:block; background:#000; min-height:200px; }
+  .cam .ph { padding:40px 16px; color:var(--muted); text-align:center; }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0; padding:10px 12px 6px; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:0 12px 12px; }
+  .stat b { display:block; font-size:20px; font-variant-numeric:tabular-nums; }
+  .stat span { color:var(--muted); font-size:12px; }
+  details.key summary { cursor:pointer; list-style:none; }
+  details.key summary::-webkit-details-marker { display:none; }
+  details.key summary h2::after { content:" ▾"; }
+  details.key:not([open]) summary h2::after { content:" ▸"; }
+  .key .grp { padding:2px 12px 8px; }
+  .key h3 { font-size:11.5px; color:var(--text); margin:6px 0 4px; font-weight:600; }
+  .key .row { display:grid; grid-template-columns:30px 1fr; gap:8px; align-items:start; padding:3px 0; font-size:12.5px; }
+  .key .row b { font-weight:600; }
+  .key .row span { color:var(--muted); }
+  .key svg { width:28px; height:20px; display:block; margin-top:1px; }
+  .simform { padding:0 12px 12px; display:grid; gap:8px; }
+  .simform select, .simform input { width:100%; background:#0f1216; color:var(--text); border:1px solid var(--line);
+         border-radius:6px; padding:6px 8px; font:inherit; font-size:13px; }
+  .simform .row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .simform label { font-size:12px; color:var(--muted); display:block; margin-bottom:3px; }
+  .simform .btns { display:flex; gap:8px; }
+  .simform button { flex:1; border:0; border-radius:6px; padding:7px 10px; font:inherit; font-size:13px; cursor:pointer; }
+  #sim-go { background:#ffd23f; color:#111; font-weight:600; }
+  #sim-go:disabled { opacity:.5; cursor:wait; }
+  #sim-stop { background:#2a313a; color:var(--text); }
+  #sim-msg { font-size:12.5px; color:var(--muted); min-height:18px; }
+  #sim-msg.err { color:#ff7b8a; }
+  #pickhint { position:absolute; bottom:44px; left:50%; transform:translateX(-50%); background:rgba(255,210,63,.95); color:#111; font-size:12.5px;
+         padding:5px 10px; border-radius:6px; display:none; font-weight:600; }
+  #tip { position:absolute; pointer-events:none; background:rgba(12,14,18,.95); border:1px solid var(--line);
+         border-radius:6px; padding:6px 9px; font-size:12.5px; max-width:280px; display:none; z-index:5; }
+  #tip b { display:block; margin-bottom:2px; }
+  #found { position:absolute; left:50%; transform:translateX(-50%); top:52px; display:none; z-index:4;
+           background:rgba(20,24,30,.95); border:2px solid #ff3b5c; border-radius:10px; padding:10px 14px;
+           box-shadow:0 6px 24px rgba(0,0,0,.45); text-align:center; max-width:90%; }
+  #found .big { font-size:16px; font-weight:700; color:#ff6b81; letter-spacing:.04em; }
+  #found .det { color:var(--text); font-size:13px; margin-top:3px; }
+  #found .sim { color:var(--muted); font-size:12px; margin-top:2px; }
+  #found button { margin-top:7px; background:#ff3b5c; color:#fff; border:0; border-radius:6px; padding:4px 12px; cursor:pointer; font:inherit; font-size:12.5px; }
+  #log { overflow:auto; flex:1; min-height:120px; padding:0 12px 12px; font-size:12.5px; }
+  #log div { padding:5px 0; border-bottom:1px solid var(--line); display:flex; gap:8px; }
+  #log time { color:var(--muted); font-variant-numeric:tabular-nums; }
+  .tag { padding:0 6px; border-radius:4px; font-size:11px; }
+  .warn { color:var(--muted); font-style:italic; }
+  #err { position:absolute; top:50px; left:10px; background:#5a1d1d; padding:6px 10px; border-radius:6px; display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Operation Lost and Found · Team 16 ground station</h1>
+  <span class="sub" id="title"></span>
+  <span class="clock" id="clock"></span>
+</header>
+<main>
+  <section class="card" id="mapwrap">
+    <canvas id="map"></canvas>
+    <div class="tools">
+      <button id="b-region">White Mountains</button>
+      <button id="b-search" class="on">Search area</button>
+      <button id="b-pod">Follow pod</button>
+      <label><input type="checkbox" id="t-hill" checked>terrain detail</label>
+      <label><input type="checkbox" id="t-heat" checked>search heat</label>
+      <label><input type="checkbox" id="t-places" checked>places</label>
+    </div>
+    <div class="hint">scroll to zoom · drag to pan · hover a symbol for details</div>
+    <div id="found"><div class="big">SUBJECT LOCATED</div><div class="det" id="found-det"></div>
+      <div class="sim" id="found-sim"></div><button id="found-go">Show on map</button> <button id="found-x" style="background:#2a313a">Hide</button></div>
+    <div id="tip"></div>
+    <div id="pickhint">Click on the map to set the missing person's last known point</div>
+    <div id="err"></div>
+  </section>
+  <aside class="side">
+    <section class="card cam"><h2>Pod camera (Pi)</h2><div id="cam"></div></section>
+    <section class="card">
+      <h2>Search status</h2>
+      <div class="stats">
+        <div class="stat"><b id="s-searched">0%</b><span>probability cleared</span></div>
+        <div class="stat"><b id="s-area">0.0</b><span>km² covered</span></div>
+        <div class="stat"><b id="s-hs">0/0</b><span>hot spots visited</span></div>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Run a simulation</h2>
+      <div class="simform">
+        <div><label for="sim-trail">Where was the person last seen?</label>
+          <select id="sim-trail"><option value="">Click a point on the map…</option></select></div>
+        <div class="row2">
+          <div><label for="sim-speed">Speed</label>
+            <select id="sim-speed"><option value="10">10x</option><option value="20" selected>20x</option>
+              <option value="50">50x</option><option value="100">100x</option></select></div>
+          <div><label for="sim-seed">Hiker hiding spot</label><input id="sim-seed" placeholder="random" inputmode="numeric"></div>
+        </div>
+        <div id="sim-point" style="font-size:12.5px;color:var(--muted)"></div>
+        <div class="btns"><button id="sim-go">Start simulation</button><button id="sim-stop">Stop</button></div>
+        <div id="sim-msg"></div>
+      </div>
+    </section>
+    <section class="card">
+      <details class="key" open>
+        <summary><h2>Map key: what the symbols mean</h2></summary>
+        <div class="grp">
+          <h3>Where to look</h3>
+          <div class="row"><svg viewBox="0 0 28 20"><defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#ffe680" stop-opacity=".2"/><stop offset=".5" stop-color="#ff8a3b"/><stop offset="1" stop-color="#d7263d"/></linearGradient></defs><rect x="1" y="5" width="26" height="10" rx="3" fill="url(#g)"/></svg>
+            <div><b>Search heat</b><br><span>Where the person is most likely to be. Redder means more likely. It fades where the pod has already searched.</span></div></div>
+          <div class="row"><svg viewBox="0 0 28 20"><circle cx="11" cy="10" r="7" fill="none" stroke="#7CFC00" stroke-width="2.5"/><text x="20" y="14" fill="#7CFC00" font-size="10" font-weight="700">1</text></svg>
+            <div><b>Trail hot spot</b><br><span>A likely spot on or near the planned trail. #1 is the most likely.</span></div></div>
+          <div class="row"><svg viewBox="0 0 28 20"><circle cx="11" cy="10" r="7" fill="none" stroke="#38d6ff" stroke-width="2.5"/><text x="20" y="14" fill="#38d6ff" font-size="10" font-weight="700">5</text></svg>
+            <div><b>Off-trail hot spot</b><br><span>A likely spot away from the trail, such as a drainage, stream or ridge.</span></div></div>
+          <div class="row"><svg viewBox="0 0 28 20"><circle cx="11" cy="10" r="7" fill="none" stroke="#38d6ff" stroke-width="2.5" opacity=".4"/></svg>
+            <div><b>Faded ring = already searched</b><br><span>The pod has flown over this hot spot.</span></div></div>
+          <div class="row"><svg viewBox="0 0 28 20"><rect x="5" y="2" width="16" height="16" fill="none" stroke="#ffd23f" stroke-width="2" stroke-dasharray="4 3"/></svg>
+            <div><b>Search next / searching now</b><br><span>The 500 m box the pod is flying to or sweeping: the area with the most probability left. Once it's searched, a new box is picked.</span></div></div>
+          <div class="row"><svg viewBox="0 0 28 20"><path d="M2 14 C8 6 14 16 26 6" fill="none" stroke="#3378d9" stroke-width="2"/></svg>
+            <div><b>Stream</b><br><span>Lost hikers often walk downhill along water, so streams are searched closely.</span></div></div>
+          <div class="row"><svg viewBox="0 0 28 20"><path d="M2 12 L26 8" fill="none" stroke="#8c1f1a" stroke-width="2.5"/></svg>
+            <div><b>Planned trail</b><br><span>The route the missing person was on.</span></div></div>
+          <h3>Places</h3>
+          <div class="row"><svg viewBox="0 0 28 20"><path d="M12 4 L18 15 L6 15 Z" fill="#5b3a1e" stroke="#fff" stroke-width="1.5"/></svg>
+            <div><b>Summit</b><br><span>Mountain peak. Only the big ones show when zoomed out; zoom in to see all.</span></div></div>
+          <div class="row"><svg viewBox="0 0 28 20"><rect x="6" y="4" width="12" height="12" fill="#1f5fbf" stroke="#fff" stroke-width="1.5"/><text x="9.3" y="13.5" fill="#fff" font-size="9" font-weight="700">P</text></svg>
+            <div><b>Trailhead / parking</b><br><span>Where hikes start. In "click a point" mode, click one to use it as the last known point.</span></div></div>
+          <div class="row"><svg viewBox="0 0 28 20"><circle cx="12" cy="10" r="4.5" fill="#2e7d4f" stroke="#fff" stroke-width="1.5"/></svg>
+            <div><b>Landmark</b><br><span>Hut, ravine, waterfall or other named place.</span></div></div>
+          <h3>The pod (drone)</h3>
+          <div class="row"><svg viewBox="0 0 28 20"><circle cx="12" cy="10" r="6" fill="#fff" stroke="#000" stroke-width="2"/></svg>
+            <div><b>Pod</b><br><span>Where the pod is right now.</span></div></div>
+          <div class="row"><svg viewBox="0 0 28 20"><path d="M2 15 L10 5 L18 15 L26 5" fill="none" stroke="#fff" stroke-width="1.8"/></svg>
+            <div><b>Pod track</b><br><span>Where the pod has flown. Its camera covers about 60 m on each side.</span></div></div>
+          <div class="row"><svg viewBox="0 0 28 20"><path d="M2 10 L26 10" stroke="#fff" stroke-width="1.5"/><rect x="11" y="7" width="6" height="6" fill="#fff"/></svg>
+            <div><b>Terrain fix</b><br><span>The pod confirmed its position without GPS by matching its lidar to the height map.</span></div></div>
+          <h3>What the pod found</h3>
+          <div class="row"><svg viewBox="0 0 28 20"><path d="M12 2 L20 10 L12 18 L4 10 Z" fill="#ff7a2f" stroke="#000" stroke-width="1.5"/></svg>
+            <div><b>Camera detection</b><br><span>The camera spotted a person or an unnatural color, such as an orange jacket.</span></div></div>
+          <div class="row"><svg viewBox="0 0 28 20"><path d="M12 1 L14.6 7.4 L21.5 7.9 L16.2 12.3 L17.9 19 L12 15.4 L6.1 19 L7.8 12.3 L2.5 7.9 L9.4 7.4 Z" fill="#ff3b5c" stroke="#000" stroke-width="1.2"/></svg>
+            <div><b>Beacon dropped: subject located</b><br><span>The pod dropped a radio beacon on the detection so the ground team can walk straight to it.</span></div></div>
+          <div class="row"><svg viewBox="0 0 28 20"><circle cx="8" cy="10" r="3" fill="#b388ff" opacity=".6"/><circle cx="18" cy="10" r="3" fill="#b388ff" opacity=".6"/></svg>
+            <div><b>Radio: our beacon</b><br><span>The pod hears the dropped beacon. A higher dB value means it is closer.</span></div></div>
+          <div class="row"><svg viewBox="0 0 28 20"><circle cx="12" cy="10" r="3.5" fill="#ff5ac8"/></svg>
+            <div><b>Radio: unknown transmitter</b><br><span>Another signal on the same band, logged for the team.</span></div></div>
+        </div>
+      </details>
+    </section>
+    <section class="card" style="display:flex;flex-direction:column;min-height:240px;flex:1 0 240px">
+      <h2>Event log</h2><div id="log"><div class="warn">waiting for pod data…</div></div>
+    </section>
+  </aside>
+</main>
+<script>
+// Everything is drawn in UTM zone 19N metres (EPSG:26919), the same CRS as the team's QGIS map.
+const cv = document.getElementById('map'), ctx = cv.getContext('2d');
+const region = new Image(), base = new Image(), heat = new Image();
+let S = null, R = null, L = null, heatV = -1, follow = false;   // L = locked view box (UTM)
+let V = null;                       // view: centre (cx, cy) in metres, mpp = metres per device pixel
+let TRAILS = [], PICK = null, runId = -1, PLACES = [];
+fetch('/api/places').then(r => r.json()).then(p => { PLACES = p; draw(); });   // PICK = clicked last-known point {x, y}
+[region, base, heat].forEach(im => im.onload = draw);
+base.src = '/basemap.png';
+const D = () => devicePixelRatio || 1;
+
+fetch('/api/config').then(r => r.json()).then(c => {
+  const el = document.getElementById('cam');
+  el.innerHTML = c.camera ? `<img src="${c.camera}" alt="Pi camera feed">`
+    : '<div class="ph">No camera URL. Start the server with --camera http://&lt;pi&gt;:8080/</div>';
+  if (c.region) { R = c.region; region.src = '/region.png'; } else document.getElementById('b-region').disabled = true;
+  L = c.lock || (c.region ? { left: c.region.left, bottom: c.region.bottom, right: c.region.right, top: c.region.top } : null);
+  draw();
+});
+
+function fit() {
+  const r = cv.parentElement.getBoundingClientRect();
+  cv.width = r.width * D(); cv.height = Math.max(r.height, 420) * D(); draw();
+}
+addEventListener('resize', fit);
+
+// Keep the view inside the locked White Mountains box: no zooming out past it, no panning into black.
+function clampView() {
+  if (!V || !L || cv.width < 10) return;
+  const maxMpp = Math.min((L.right - L.left) / cv.width, (L.top - L.bottom) / cv.height);
+  V.mpp = Math.min(V.mpp, maxMpp);
+  const hw = cv.width / 2 * V.mpp, hh = cv.height / 2 * V.mpp;
+  V.cx = Math.min(Math.max(V.cx, L.left + hw), L.right - hw);
+  V.cy = Math.min(Math.max(V.cy, L.bottom + hh), L.top - hh);
+}
+function frameBox(x0, y0, x1, y1, pad = 1.1) {
+  V = { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2,
+        mpp: Math.max((x1 - x0) / cv.width, (y1 - y0) / cv.height) * pad };
+  draw();
+}
+function searchBox() {
+  const c = S.corners, xs = [c.nw[0], c.ne[0], c.sw[0]], ys = [c.nw[1], c.ne[1], c.sw[1]];
+  const ex = c.ne[0] + c.sw[0] - c.nw[0], ey = c.ne[1] + c.sw[1] - c.nw[1]; xs.push(ex); ys.push(ey);
+  return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+}
+function setMode(id) { ['b-region', 'b-search', 'b-pod'].forEach(b => document.getElementById(b).classList.toggle('on', b === id)); }
+document.getElementById('b-search').onclick = () => { follow = false; setMode('b-search'); if (S) frameBox(...searchBox(), 1.05); };
+document.getElementById('b-region').onclick = () => { follow = false; setMode('b-region'); if (L) { V = { cx: (L.left + L.right) / 2, cy: (L.bottom + L.top) / 2, mpp: 1e9 }; draw(); } };
+document.getElementById('b-pod').onclick = () => { follow = true; setMode('b-pod'); if (V) V.mpp = Math.min(V.mpp, 8 / D()); draw(); };
+['t-hill', 't-heat', 't-places'].forEach(id => document.getElementById(id).onchange = draw);
+
+// ---- run a simulation anywhere on the map ----
+const selT = document.getElementById('sim-trail'), msg = document.getElementById('sim-msg');
+fetch('/api/trails').then(r => r.json()).then(list => {
+  TRAILS = list;
+  list.forEach(t => { const o = document.createElement('option'); o.value = t.name; o.textContent = t.name; selT.appendChild(o); });
+  pickMode();
+});
+function pickMode() {
+  const custom = !selT.value;
+  const busy = S && S.job && (S.job.stage === 'building' || S.job.stage === 'flying');
+  document.getElementById('pickhint').style.display = custom && !PICK && !busy ? 'block' : 'none';
+  document.getElementById('sim-point').textContent = custom
+    ? (PICK ? 'Last known point set. Click the map again to move it.' : 'No point yet: click the map.')
+    : 'The search starts from this trail\'s route.';
+  draw();
+}
+selT.onchange = () => { pickMode(); const t = TRAILS.find(t => t.name === selT.value);
+  if (t && V) { follow = false; setMode(''); V.cx = t.x; V.cy = t.y; V.mpp = Math.min(V.mpp, 30 / D()); draw(); } };
+function setMsg(t, err) { msg.textContent = t || ''; msg.className = err ? 'err' : ''; }
+document.getElementById('sim-go').onclick = async () => {
+  const body = { trail: selT.value || null, speed: +document.getElementById('sim-speed').value,
+                 seed: document.getElementById('sim-seed').value.trim() };
+  if (!body.trail) { if (!PICK) return setMsg('Click a point on the map first, or pick a trail.', true); body.x = PICK.x; body.y = PICK.y; }
+  document.getElementById('sim-go').disabled = true; setMsg('Starting…');
+  try {
+    const r = await (await fetch('/api/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
+    if (!r.ok) { setMsg(r.error, true); document.getElementById('sim-go').disabled = false; }
+    else window.hiddenDrop = null;
+  } catch (e) { setMsg('Server not reachable', true); document.getElementById('sim-go').disabled = false; }
+};
+document.getElementById('sim-stop').onclick = () => fetch('/api/stop', { method: 'POST' });
+function jobUi() {
+  const j = S.job; if (!j) return;
+  if (j.stage !== 'idle') setMsg(j.message, j.stage === 'error');
+  document.getElementById('sim-go').disabled = j.stage === 'building';
+}
+
+// hover tooltips
+const tip = document.getElementById('tip');
+cv.addEventListener('mousemove', e => {
+  if (drag) { tip.style.display = 'none'; return; }
+  const rect = cv.getBoundingClientRect(), px = (e.clientX - rect.left) * D(), py = (e.clientY - rect.top) * D();
+  let best = null, bd = 1e9;
+  HITS.forEach(h => { const dd = Math.hypot(h.x - px, h.y - py); if (dd <= h.r && dd < bd) { bd = dd; best = h; } });
+  if (!best) { tip.style.display = 'none'; cv.style.cursor = ''; return; }
+  tip.innerHTML = `<b>${best.title}</b>${best.body}`; tip.style.display = 'block'; cv.style.cursor = 'help';
+  const x = e.clientX - rect.left + 14, y = e.clientY - rect.top + 14;
+  tip.style.left = Math.min(x, rect.width - tip.offsetWidth - 8) + 'px'; tip.style.top = Math.min(y, rect.height - tip.offsetHeight - 8) + 'px';
+});
+cv.addEventListener('mouseleave', () => tip.style.display = 'none');
+
+function banner() {
+  const el = document.getElementById('found');
+  const d = S.drops.filter(x => x.lat != null);
+  if (!d.length) { el.style.display = 'none'; return; }
+  const last = d[d.length - 1];
+  if (window.hiddenDrop === last.t) { el.style.display = 'none'; return; }
+  document.getElementById('found-x').onclick = () => { window.hiddenDrop = last.t; el.style.display = 'none'; };
+  document.getElementById('found-det').innerHTML =
+    `Beacon <b>${last.beacon_id || ''}</b> dropped at ${fmtT(last.t)} · ${fmtLL(last)}<br>Ground team: direction-find beacon ${last.beacon_id || ''} to reach the person`;
+  document.getElementById('found-sim').textContent = last.sim ? 'Simulated run: the hiker was planted by simulate_flight.py' : '';
+  el.style.display = 'block';
+  document.getElementById('found-go').onclick = () => { follow = false; setMode(''); V.cx = last.x; V.cy = last.y; V.mpp = Math.min(V.mpp, 6 / D()); draw(); };
+}
+
+// pan & zoom
+let drag = null;
+let downAt = null;
+cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY }; downAt = { x: e.clientX, y: e.clientY };
+  cv.classList.add('drag'); cv.setPointerCapture(e.pointerId); });
+cv.addEventListener('pointermove', e => {
+  if (!drag || !V) return;
+  V.cx -= (e.clientX - drag.x) * D() * V.mpp; V.cy += (e.clientY - drag.y) * D() * V.mpp;
+  drag = { x: e.clientX, y: e.clientY }; follow = false; setMode(''); draw();
+});
+cv.addEventListener('pointerup', e => {
+  drag = null; cv.classList.remove('drag');
+  if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 5 && !selT.value && V) {
+    const rect = cv.getBoundingClientRect(), px = (e.clientX - rect.left) * D(), py = (e.clientY - rect.top) * D();
+    const near = HITS.filter(h => h.place).find(h => Math.hypot(h.x - px, h.y - py) <= h.r);
+    const [x, y] = near ? [near.place.x, near.place.y] : toWorld(px, py);
+    PICK = { x, y, name: near ? near.place.name : null }; pickMode();
+  }
+  downAt = null;
+});
+cv.addEventListener('wheel', e => {
+  if (!V) return; e.preventDefault();
+  const rect = cv.getBoundingClientRect(), px = (e.clientX - rect.left) * D(), py = (e.clientY - rect.top) * D();
+  const [wx, wy] = toWorld(px, py), k = Math.exp(e.deltaY * 0.0015);
+  V.mpp = Math.min(Math.max(V.mpp * k, 3 / D()), 2000);   // max zoom-in ~3 m per screen pixel
+  V.cx = wx - (px - cv.width / 2) * V.mpp; V.cy = wy + (py - cv.height / 2) * V.mpp; setMode(''); draw();
+}, { passive: false });
+
+const P = (x, y) => [(x - V.cx) / V.mpp + cv.width / 2, (V.cy - y) / V.mpp + cv.height / 2];
+const toWorld = (px, py) => [V.cx + (px - cv.width / 2) * V.mpp, V.cy - (py - cv.height / 2) * V.mpp];
+const mPx = m => m / V.mpp;
+
+function drawGridImage(img, alpha) {   // lat/lon grid image placed exactly with an affine transform
+  if (!img.complete || !img.naturalWidth) return;
+  const c = S.corners, [rows, cols] = S.size, p0 = P(...c.nw), p1 = P(...c.ne), p2 = P(...c.sw);
+  ctx.save(); ctx.globalAlpha = alpha;
+  ctx.setTransform((p1[0] - p0[0]) / cols, (p1[1] - p0[1]) / cols, (p2[0] - p0[0]) / rows, (p2[1] - p0[1]) / rows, p0[0], p0[1]);
+  ctx.imageSmoothingEnabled = true; ctx.drawImage(img, 0, 0, cols, rows); ctx.restore();
+}
+
+let HITS = [];                       // clickable/hoverable symbols drawn this frame
+const hit = (x, y, r, title, body) => HITS.push({ x, y, r, title, body });
+const fmtT = t => t ? new Date(t * 1000).toLocaleTimeString() : '';
+const fmtLL = (o) => o.lat != null ? `${(+o.lat).toFixed(5)}, ${(+o.lon).toFixed(5)}` : 'no position';
+function draw() {
+  HITS = [];
+  clampView();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#0b0e12'; ctx.fillRect(0, 0, cv.width, cv.height);
+  if (!S || !V) return;
+  const d = D();
+  if (R && region.complete && region.naturalWidth) {             // the team's White Mountains map
+    const [x0, y0] = P(R.left, R.top), [x1, y1] = P(R.right, R.bottom);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high"; ctx.drawImage(region, x0, y0, x1 - x0, y1 - y0);
+  }
+  if (document.getElementById('t-hill').checked) drawGridImage(base, 1);
+  if (document.getElementById('t-heat').checked) drawGridImage(heat, 1);
+  const c = S.corners, mid = [(c.ne[0] + c.sw[0]) / 2, (c.ne[1] + c.sw[1]) / 2];
+  if (mPx(12000) < 150 * d) {                               // zoomed far out: a pin instead of a box
+    const [x, y] = P(...mid);
+    ctx.fillStyle = 'rgba(215,38,61,.25)'; ctx.beginPath(); ctx.arc(x, y, 16 * d, 0, 7); ctx.fill();
+    ctx.fillStyle = '#d7263d'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * d;
+    ctx.beginPath(); ctx.arc(x, y, 6 * d, 0, 7); ctx.fill(); ctx.stroke();
+    label('Search area', x + 12 * d, y - 10 * d, '#fff');
+    drawPlaces([[x - 18 * d, y - 26 * d, x + 100 * d, y + 18 * d]]); drawPick(); scalebar(); return;
+  }
+
+  if (S.next) {
+    const [x, y] = P(S.next.x, S.next.y), h = mPx(S.next.size_m);
+    ctx.setLineDash([6 * d, 4 * d]); ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 2 * d;
+    const lab = S.next.label || 'SEARCH NEXT';
+    ctx.fillStyle = 'rgba(255,210,63,.14)'; ctx.fillRect(x - h / 2, y - h / 2, h, h);
+    ctx.lineWidth = 2.5 * d; ctx.strokeRect(x - h / 2, y - h / 2, h, h); ctx.setLineDash([]);
+    label(lab + (S.next.box ? ' · box ' + S.next.box : ''), x - h / 2, y - h / 2 - 18 * d, '#ffd23f');
+    hit(x, y, h / 2, lab === 'SEARCHING NOW' ? 'Pod is searching this box' : 'Search next',
+        'The 500 m area with the most remaining probability. The pod flies here and sweeps it back and forth.' +
+        (S.next.poa != null ? `<br>Holds ${(S.next.poa * 100).toFixed(1)}% of the remaining probability` : ''));
+  }
+  if (S.track.length) {
+    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.6 * d; ctx.beginPath();
+    S.track.forEach((p, i) => { const [x, y] = P(p.x, p.y); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+    S.track.filter(p => p.source === 'lidar').forEach(p => { const [x, y] = P(p.x, p.y);
+      ctx.fillStyle = '#fff'; ctx.fillRect(x - 2 * d, y - 2 * d, 4 * d, 4 * d); });
+    const last = S.track[S.track.length - 1], [x, y] = P(last.x, last.y);
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, 6 * d, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 2 * d; ctx.stroke(); label('POD', x + 9 * d, y - 8 * d, '#fff');
+    hit(x, y, 9 * d, 'Pod (drone)', `Current position ${fmtLL(last)}<br>${last.z ? Math.round(last.z) + ' m above ground · ' : ''}` +
+        (last.source === 'lidar' ? 'position from terrain match' : 'position from inertial dead reckoning') + `<br>${fmtT(last.t)}`);
+  }
+  S.hotspots.forEach(h => {
+    const [x, y] = P(h.x, h.y), col = h.zone === 'trail' ? '#7CFC00' : '#38d6ff';
+    ctx.globalAlpha = h.visited ? 0.4 : 1; ctx.strokeStyle = col; ctx.lineWidth = 2.5 * d;
+    ctx.beginPath(); ctx.arc(x, y, 11 * d, 0, 7); ctx.stroke(); label(String(h.rank), x + 12 * d, y + 4 * d, col); ctx.globalAlpha = 1;
+    const why = { downstream: 'downhill / downstream from the trail', stream: 'near a stream', trail: 'near the trail',
+                  alpine: 'above treeline', trap: 'steep drainage or crossing', history: 'past incidents nearby' };
+    hit(x, y, 13 * d, `Hot spot #${h.rank} (${h.zone === 'trail' ? 'on/near trail' : 'off trail'})`,
+        `Why it ranks high: ${(h.reasons || []).map(r => why[r] || r).join(', ') || 'distance from the route'}` +
+        (h.poa != null ? `<br>Chance the person is within 250 m: ${(h.poa * 100).toFixed(1)}%` : '') +
+        `<br>${h.visited ? 'Already searched by the pod' : 'Not searched yet'}`);
+  });
+  S.rf_hits.forEach(r => { if (r.x == null) return; const [x, y] = P(r.x, r.y);
+    ctx.fillStyle = r.note && r.note.startsWith('own') ? 'rgba(179,136,255,.55)' : 'rgba(255,90,200,.9)';
+    ctx.beginPath(); ctx.arc(x, y, 3 * d, 0, 7); ctx.fill();
+    hit(x, y, 6 * d, r.note && r.note.startsWith('own') ? 'Radio: heard our beacon' : 'Radio: unknown transmitter',
+        `${(r.hz / 1e6).toFixed(3)} MHz at ${r.power_db} dB (higher = closer/stronger)<br>${fmtT(r.t)}`); });
+  S.drops.forEach(e => { if (e.x == null) return; const [x, y] = P(e.x, e.y);
+    star(x, y, 12 * d, '#ff3b5c'); label('BEACON ' + (e.beacon_id || ''), x + 14 * d, y + 4 * d, '#ff3b5c');
+    hit(x, y, 14 * d, `Beacon ${e.beacon_id || ''} dropped: subject located`,
+        `${fmtLL(e)}<br>Dropped ${fmtT(e.t)}. The ground team direction-finds this beacon to walk to the person.`); });
+  S.detections.forEach(e => { if (e.x == null) return; const [x, y] = P(e.x, e.y), sz = 8 * d;
+    ctx.fillStyle = '#ff7a2f'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5 * d; ctx.beginPath();
+    ctx.moveTo(x + 16 * d, y - sz - 10 * d); ctx.lineTo(x + 16 * d + sz, y - 10 * d); ctx.lineTo(x + 16 * d, y + sz - 10 * d);
+    ctx.lineTo(x + 16 * d - sz, y - 10 * d); ctx.closePath(); ctx.fill(); ctx.stroke();   // offset so the beacon star stays visible
+    ctx.strokeStyle = '#ff7a2f'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 16 * d - sz, y - 10 * d); ctx.stroke();
+    const what = e.cls === 'person' ? 'a person' : e.cls === 'thermal' ? 'a warm body (thermal)' : `an unnatural color${e.color ? ' (' + e.color + ')' : ''}`;
+    hit(x + 16 * d, y - 10 * d, 11 * d, 'Camera detection', `Spotted ${what}, ${Math.round((e.confidence || 0) * 100)}% confidence<br>${fmtLL(e)} · ${fmtT(e.t)}` +
+        (e.placed === 'matched-by-time' ? '<br>Placed using the pod position at that moment' : '')); });
+  drawPlaces();
+  drawPick();
+  scalebar();
+}
+// Peaks, trailheads and landmarks. Labels that would overlap are skipped; more appear as you zoom in.
+const BIGLIST = ['Mount Washington', 'Mount Lafayette', 'Mount Moosilauke', 'Mount Chocorua', 'Mount Adams',
+                 'Mount Carrigain', 'Carter Dome', 'South Twin Mountain', 'Mount Garfield', 'Kearsarge North'];
+const BIG = new Set(BIGLIST);
+const KIND_RANK = { peak: 0, trailhead: 1, feature: 2 };
+function drawPlaces(reserved = []) {
+  if (!document.getElementById('t-places').checked || !PLACES.length) return;
+  const d = D(), boxes = reserved.slice(), far = V.mpp > 120 / d, mid = V.mpp > 40 / d;
+  const rank = p => BIG.has(p.name) ? BIGLIST.indexOf(p.name) : 100 + (KIND_RANK[p.kind] ?? 3);
+  const order = PLACES.slice().sort((a, b) => rank(a) - rank(b));
+  ctx.font = `600 ${11.5 * d}px system-ui, Arial`;
+  for (const p of order) {
+    if (far && !BIG.has(p.name)) continue;                       // overview: only the big peaks
+    if (mid && p.kind !== 'peak') continue;                       // mid zoom: all peaks
+    const [x, y] = P(p.x, p.y);
+    if (x < -50 || y < -50 || x > cv.width + 50 || y > cv.height + 50) continue;
+    const w = ctx.measureText(p.name).width, box = [x + 7 * d, y - 13 * d, x + 11 * d + w, y + 3 * d];
+    if (boxes.some(b => !(box[2] < b[0] || box[0] > b[2] || box[3] < b[1] || box[1] > b[3]))) continue;
+    boxes.push(box);
+    ctx.lineWidth = 1.5 * d; ctx.strokeStyle = '#111';
+    if (p.kind === 'peak') {                                      // ▲ summit
+      ctx.fillStyle = '#5b3a1e'; ctx.beginPath(); ctx.moveTo(x, y - 6 * d); ctx.lineTo(x + 5.5 * d, y + 4 * d); ctx.lineTo(x - 5.5 * d, y + 4 * d);
+      ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.stroke();
+    } else if (p.kind === 'trailhead') {                          // ■ P parking / trailhead
+      ctx.fillStyle = '#1f5fbf'; ctx.fillRect(x - 5.5 * d, y - 5.5 * d, 11 * d, 11 * d); ctx.strokeStyle = '#fff'; ctx.strokeRect(x - 5.5 * d, y - 5.5 * d, 11 * d, 11 * d);
+      ctx.fillStyle = '#fff'; ctx.font = `700 ${8.5 * d}px system-ui, Arial`; ctx.fillText('P', x - 2.8 * d, y + 3 * d);
+      ctx.font = `600 ${11.5 * d}px system-ui, Arial`;
+    } else {                                                      // ● hut / ravine / falls / landmark
+      ctx.fillStyle = '#2e7d4f'; ctx.beginPath(); ctx.arc(x, y, 4.5 * d, 0, 7); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.stroke();
+    }
+    label(p.name, x + 9 * d, y + 1 * d, '#fff');
+    const kind = p.kind === 'peak' ? 'Summit' : p.kind === 'trailhead' ? 'Trailhead / parking' : 'Landmark';
+    hit(x, y, 9 * d, p.name, `${kind}<br>${(+p.lat).toFixed(4)}, ${(+p.lon).toFixed(4)} (approximate)` +
+        (!selT.value ? '<br>Click to use as the last known point' : ''));
+    HITS[HITS.length - 1].place = p;
+  }
+}
+function drawPick() {
+  const d = D(), pts = [];
+  if (!selT.value && PICK) pts.push([PICK.x, PICK.y, 'Last known point' + (PICK.name ? ': ' + PICK.name : '')]);
+  const t = TRAILS.find(t => t.name === selT.value); if (t) pts.push([t.x, t.y, t.name + ' (start)']);
+  pts.forEach(([wx, wy, txt]) => {
+    const [x, y] = P(wx, wy);
+    ctx.fillStyle = '#ffd23f'; ctx.strokeStyle = '#111'; ctx.lineWidth = 2 * d;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y - 16 * d, 7 * d, Math.PI * 0.8, Math.PI * 2.2); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(x, y - 16 * d, 2.5 * d, 0, 7); ctx.fill();
+    label(txt, x + 10 * d, y - 18 * d, '#ffd23f');
+  });
+}
+function label(t, x, y, c) {
+  const d = D(); ctx.font = `600 ${12 * d}px system-ui, Arial`;
+  ctx.lineWidth = 3 * d; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.strokeText(t, x, y); ctx.fillStyle = c; ctx.fillText(t, x, y);
+}
+function star(x, y, r, c) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .45 : r; ctx.lineTo(x + rr * Math.cos(a), y + rr * Math.sin(a)); }
+  ctx.closePath(); ctx.fillStyle = c; ctx.fill(); ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.stroke();
+}
+function scalebar() {
+  const d = D(), steps = [100, 250, 500, 1000, 2000, 5000, 10000, 20000, 50000];
+  const m = steps.find(s => mPx(s) > 80 * d) || 50000, px = mPx(m), x = 14 * d, y = cv.height - 16 * d;
+  ctx.fillStyle = '#fff'; ctx.fillRect(x, y, px, 3 * d); label(m >= 1000 ? m / 1000 + ' km' : m + ' m', x, y - 6 * d, '#fff');
+}
+
+const COL = { detection: '#ff7a2f', drop_event: '#ff3b5c', rf_hit: '#b388ff', plan: '#ffd23f' };
+const TAG = { detection: 'camera', drop_event: 'beacon', rf_hit: 'radio', plan: 'plan' };
+function panel() {
+  document.getElementById('title').textContent = S.title || '';
+  document.getElementById('s-searched').textContent = Math.round((S.searched || 0) * 100) + '%';
+  document.getElementById('s-area').textContent = (S.covered_km2 || 0).toFixed(1);
+  document.getElementById('s-hs').textContent = S.hotspots.filter(h => h.visited).length + '/' + S.hotspots.length;
+  if (!S.events.length) return;
+  document.getElementById('log').innerHTML = S.events.slice().reverse().map(e => {
+    const t = fmtT(e.t);
+    let what;
+    if (e.type === 'detection') {
+      const w = e.cls === 'person' ? 'a person' : e.cls === 'thermal' ? 'a warm body' : `unnatural color${e.color ? ' (' + e.color + ')' : ''}`;
+      what = `Camera spotted ${w}, ${Math.round((e.confidence || 0) * 100)}% sure`;
+    } else if (e.type === 'plan') {
+      what = `Pod heading to search box ${e.box}${e.poa != null ? ` (${(e.poa * 100).toFixed(1)}% of remaining probability)` : ''}`;
+    } else if (e.type === 'drop_event') {
+      what = `<b>Beacon ${e.beacon_id || ''} dropped: subject located</b>`;
+    } else {
+      const own = e.note && e.note.startsWith('own');
+      what = `${own ? 'Heard our beacon' : 'Unknown transmitter'} · ${(e.hz / 1e6).toFixed(3)} MHz · ${e.power_db != null ? e.power_db.toFixed(1) + ' dB' : ''}`;
+    }
+    const where = e.placed === 'no-position' ? ' <span class="warn">(no position)</span>' : '';
+    return `<div><time>${t}</time><span class="tag" style="background:${COL[e.type]}33;color:${COL[e.type]}">${TAG[e.type]}</span><span>${what}${where}</span></div>`;
+  }).join('');
+}
+
+async function tick() {
+  try {
+    const s = await (await fetch('/api/state')).json();
+    if (s.error) throw new Error(s.error);
+    const first = !S; S = s; document.getElementById('err').style.display = 'none';
+    if (S.heat_version !== heatV) { heatV = S.heat_version; heat.src = '/heat.png?v=' + heatV; }
+    if (cv.width < 10) fit();
+    if (S.run_id !== runId) {                         // a new search area was set up
+      const was = runId; runId = S.run_id; base.src = '/basemap.png?r=' + runId; heatV = -1;
+      if (S.heat_version !== heatV) { heatV = S.heat_version; heat.src = '/heat.png?v=' + heatV + '&r=' + runId; }
+      if (cv.width < 10) fit();
+      if (was !== -1 || first) { follow = false; setMode('b-search'); frameBox(...searchBox(), 1.05); }
+      if (was !== -1) pickMode();
+    }
+    if (follow && S.track.length) { const l = S.track[S.track.length - 1]; V.cx = l.x; V.cy = l.y; }
+    draw(); panel(); banner(); jobUi();
+  } catch (e) {
+    const el = document.getElementById('err'); el.textContent = 'Ground station offline: ' + e.message; el.style.display = 'block';
+  }
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+}
+fit(); tick(); setInterval(tick, 2000);
+</script>
+</body>
+</html>

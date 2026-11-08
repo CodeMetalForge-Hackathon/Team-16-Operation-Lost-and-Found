@@ -379,6 +379,13 @@ def _describe(grid, prob, L, weights, rr, cc, zone, cell, start):
 def save(out_dir, grid, prob, hotspots, aux, title):
     os.makedirs(out_dir, exist_ok=True)
     np.save(os.path.join(out_dir, "probability.npy"), prob)
+    # georeferencing + layers for the ground-station map (ground_station/server.py)
+    np.save(os.path.join(out_dir, "elevation.npy"), aux["z"].astype(np.float32))
+    np.save(os.path.join(out_dir, "streams.npy"), aux["streams"].astype(np.uint8))
+    np.save(os.path.join(out_dir, "route.npy"), aux["route"].astype(np.uint8))
+    json.dump(dict(lat0=grid.lat0, lon0=grid.lon0, dlat=grid.dlat, dlon=grid.dlon,
+                   rows=int(prob.shape[0]), cols=int(prob.shape[1]), dx=grid.dx, dy=grid.dy, title=title),
+              open(os.path.join(out_dir, "grid.json"), "w"), indent=1)
     with open(os.path.join(out_dir, "hotspots.jsonl"), "w") as f:
         for h in hotspots:
             f.write(json.dumps(h) + "\n")
@@ -424,11 +431,25 @@ def main():
     ap.add_argument("--out", default="out")
     a = ap.parse_args()
 
+    if not a.dem:                                   # fall back to the shared height map (../dem.py)
+        import sys; sys.path.insert(0, os.path.dirname(HERE))
+        root = os.path.dirname(HERE)
+        for cand in (os.environ.get("DEM_PATH", ""), os.path.join(root, "data", "height_map.tif"),
+                     os.path.join(root, "dem", "height_map.tif"),
+                     os.path.join(os.path.expanduser("~"), "Documents", "height_map.tif")):
+            if cand and os.path.exists(cand):
+                a.dem = cand; print("Using DEM:", a.dem); break
     gaz = load_gazetteer()
-    name, route_pts = pick_route(a.trail, gaz)
-    if a.ipp:
+    if (a.trail or "").lower() in ("", "none", "point"):
+        if not a.ipp:
+            raise SystemExit("--trail none needs --ipp LAT,LON (the last known point)")
         lat, lon = map(float, a.ipp.split(","))
-        route_pts = [(lat, lon)] + route_pts
+        name, route_pts = f"Last known point {lat:.4f}, {lon:.4f}", [(lat, lon)]
+    else:
+        name, route_pts = pick_route(a.trail, gaz)
+        if a.ipp:
+            lat, lon = map(float, a.ipp.split(","))
+            route_pts = [(lat, lon)] + route_pts
     lats, lons = zip(*route_pts)
     kinds = {(g["lat"], g["lon"]): g["kind"] for g in gaz}
     summits = [p for p in route_pts if kinds.get(p) == "peak"]

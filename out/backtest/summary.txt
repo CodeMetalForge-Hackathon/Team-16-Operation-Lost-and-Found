@@ -1,0 +1,26 @@
+Cases tested: 36 (Medium/High confidence, leave-one-out history); 19 found >250 m off the route
+Terrain: dem
+Metric: km2 searched (most-likely cells first) before reaching the estimated find point. Lower is better.
+
+ALL CASES (n=36)
+  Median area-to-find: model 3.09 km2 | distance-only 3.35 km2 | random 72.0 km2
+  Found within first 0.5 km2: model 25% | distance-only 31% | random ~0%
+  Found within first   1 km2: model 31% | distance-only 36% | random ~1%
+  Found within first   2 km2: model 44% | distance-only 44% | random ~1%
+  Found within first   5 km2: model 61% | distance-only 64% | random ~4%
+  Model needs less area than distance-only on 36% of cases (ties 3%)
+
+OFF-TRAIL FINDS (>250 m from route) (n=19)
+  Median area-to-find: model 10.53 km2 | distance-only 10.54 km2 | random 71.8 km2
+  Found within first 0.5 km2: model 5% | distance-only 11% | random ~0%
+  Found within first   1 km2: model 11% | distance-only 11% | random ~1%
+  Found within first   2 km2: model 16% | distance-only 16% | random ~2%
+  Found within first   5 km2: model 32% | distance-only 37% | random ~4%
+  Model needs less area than distance-only on 37% of cases (ties 0%)
+Find within tolerance of a listed hot spot: 22/36 (61%); of those in the top 5: 10
+Caveat: find coordinates are estimates from text and share the gazetteer with the routes; cases found AT a hut/summit on the route are easy. Treat as indicative, not validation.
+WEIGHT TUNING (302 weight sets, 36 cases, leave-one-case-out CV)
+  Median area-to-find: defaults 2.78 | distance-only 3.28 | tuned (CV, honest) 3.12 km2
+  Off-trail cases:     defaults 10.13 | distance-only 9.82 | tuned (CV) 9.38 km2
+  Within 2 km2: defaults 44% | distance-only 44% | tuned (CV) 47%
+  Best weights on all cases (paste into WEIGHTS if CV beats distance-only): {'downstream': 0.0, 'stream': 0.0, 'trail': 0.0, 'alpine': 0.5, 'trap': 0.0, 'history': 0.0}
