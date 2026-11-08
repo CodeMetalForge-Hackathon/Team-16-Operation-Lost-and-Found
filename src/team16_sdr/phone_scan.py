@@ -26,8 +26,21 @@ def acquire_pluto_lock():
 
     libiio allows ONE buffer per device, so exactly one phone_scan.py
     may own the Pluto. Release is implicit when the process exits.
+    Sticky-/tmp regular-file protection denies O_RDWR|O_CREAT across
+    owners (root demo vs hacker manual run), so fall back through
+    plain O_RDWR / O_RDONLY (flock ignores the access mode) before
+    recreating.
     """
-    fd = os.open(PLUTO_LOCK, os.O_CREAT | os.O_RDWR, 0o644)
+    fd = None
+    for flags in (os.O_CREAT | os.O_RDWR, os.O_RDWR, os.O_RDONLY,
+                  os.O_CREAT | os.O_WRONLY):
+        try:
+            fd = os.open(PLUTO_LOCK, flags, 0o644)
+            break
+        except (PermissionError, FileNotFoundError):
+            continue
+    if fd is None:
+        raise RuntimeError(f"cannot open {PLUTO_LOCK}")
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:

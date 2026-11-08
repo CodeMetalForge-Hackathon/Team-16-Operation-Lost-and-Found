@@ -14,9 +14,9 @@ SECONDS_WAIT=${SECONDS_WAIT:-60}
 MON=monitor_hits.jsonl
 RF=rf_hits.jsonl
 CONTACTS=phone_contacts.jsonl
+rm -f "$MON" "$RF" "$CONTACTS"   # demo window only
 
 pkill -9 -f "[p]hone_scan.py" 2>/dev/null   # libiio: one buffer per device
-sleep 1
 
 # Alfa WiFi half -> monitor mode on the PARENT iface (virtual mon
 # interfaces get stuck on 5825 MHz with this mt7921u card).
@@ -36,6 +36,8 @@ COAX_PID=$!
 cleanup() {
   kill "$MON_PID" "$RF_PID" "$COAX_PID" 2>/dev/null
   wait "$MON_PID" "$RF_PID" "$COAX_PID" 2>/dev/null
+  # SIGTERM skips monitor_scan's finally; reap its tcpdump child too.
+  pkill -f "[t]cpdump -i $IFACE" 2>/dev/null
 }
 trap cleanup EXIT
 
