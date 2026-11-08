@@ -81,6 +81,7 @@ function connectAll() {
   pollCalibration(host, document.querySelector("[data-action=recalibrate]"));
   watchFeeds(host);
   pollSdr(host);
+  pollPi(host);
   pollMap(host);
   pollIns();
 }
@@ -519,6 +520,83 @@ insEls.modes.addEventListener("click", async (event) => {
 });
 
 const queryHost = new URLSearchParams(location.search).get("host");
+// ---- Raspberry Pi health (:8087, pi_stats.py on the Pi)
+const piEls = {
+  state: document.querySelector("#pi-state"), note: document.querySelector("#pi-note"),
+  cpu: document.querySelector("#p-cpu"), temp: document.querySelector("#p-temp"), mem: document.querySelector("#p-mem"),
+  load: document.querySelector("#p-load"), thr: document.querySelector("#p-thr"), hailo: document.querySelector("#p-hailo"),
+  det: document.querySelector("#p-det"), restarts: document.querySelector("#p-restarts"), cell: document.querySelector("#p-cell"),
+  up: document.querySelector("#p-up"), cores: document.querySelector("#p-cores"), top: document.querySelector("#p-top"),
+  retry: document.querySelector("#pi-retry"),
+};
+let piTimer = null, piFails = 0;
+
+function renderPi(d) {
+  piEls.state.dataset.state = "live";
+  piEls.state.textContent = "Live";
+  const cpu = d.cpu.total;
+  setTile(piEls.cpu, cpu == null ? "—" : cpu.toFixed(0) + " %  @ " + (d.cpu_mhz || "?") + " MHz", cpu > 90 ? "bad" : cpu > 70 ? "warn" : "");
+  setTile(piEls.temp, d.temp_c == null ? "—" : d.temp_c.toFixed(1) + " °C", d.temp_c > 80 ? "bad" : d.temp_c > 70 ? "warn" : "");
+  setTile(piEls.mem, d.mem.used_mb + " / " + d.mem.total_mb + " MB (" + d.mem.used_pct + " %)", d.mem.used_pct > 90 ? "bad" : "");
+  setTile(piEls.load, d.load.map((x) => x.toFixed(1)).join(" / "), d.load[0] > d.cores_n ? "warn" : "");
+  const t = d.throttle;
+  if (!t) setTile(piEls.thr, "—");
+  else if (t.now.length) setTile(piEls.thr, "NOW: " + t.now.join(", "), "bad");
+  else if (t.since_boot.length) setTile(piEls.thr, "OK now (since boot: " + t.since_boot.join(", ") + ")", "warn");
+  else setTile(piEls.thr, "OK, no under-voltage", "good");
+  const hl = d.hailo, det = hl.detector, sup = hl.supervisor || {};
+  setTile(piEls.hailo, hl.on_bus ? "On bus" + (hl.link ? " (" + hl.link + ")" : "") : "MISSING from the bus", hl.on_bus ? "good" : "bad");
+  if (!det || det.age_s == null) setTile(piEls.det, "not running", "bad");
+  else if (!det.ok) setTile(piEls.det, "STALLED " + det.age_s.toFixed(0) + " s", "bad");
+  else setTile(piEls.det, (det.fps != null ? det.fps + " fps" : "running") + (sup.hailo_unavailable ? " (no Hailo)" : ""), sup.hailo_unavailable ? "warn" : "good");
+  const r = sup.watchdogs_15min;
+  setTile(piEls.restarts, r == null ? "—" : r + " stall" + (r === 1 ? "" : "s") + ", " + sup.starts_15min + " starts", r > 2 ? "bad" : r > 0 ? "warn" : "good");
+  setTile(piEls.cell, d.cell_scan_running ? "RUNNING" : "off", d.cell_scan_running ? "warn" : "");
+  setTile(piEls.up, fmtDuration(d.uptime_s));
+  piEls.cores.replaceChildren();
+  d.cpu.cores.forEach((c, i) => {
+    const li = document.createElement("li");
+    li.textContent = "core " + i + "  " + "█".repeat(Math.round(c / 5)) + "  " + c.toFixed(0) + " %";
+    piEls.cores.append(li);
+  });
+  piEls.top.replaceChildren();
+  d.top.forEach((p) => {
+    const li = document.createElement("li");
+    li.textContent = p.name + "  " + p.cpu.toFixed(0) + " % cpu";
+    piEls.top.append(li);
+  });
+  const hist = (key) => d.history.filter((p) => p[key] != null).map((p) => ({ t: p.t, v: p[key] }));
+  drawChart(document.querySelector("#c-pcpu"), hist("cpu"), { range: [0, 100], step: 25, color: "--cyan", gap: 8, empty: "collecting…" });
+  drawChart(document.querySelector("#c-ptemp"), hist("temp"), { range: [30, 90], step: 20, color: "--amber", gap: 8, floor: 80, empty: "collecting…" });
+  const issues = [];
+  if (!hl.on_bus) issues.push("the Hailo chip is not on the PCIe bus (needs a power-cycle)");
+  if (det && !det.ok) issues.push("the detector is stalled");
+  if (sup.watchdogs_15min > 2) issues.push("the detector has stalled " + sup.watchdogs_15min + " times in 15 min");
+  if (t && t.now.length) issues.push("the Pi is " + t.now.join(" and "));
+  if (hl.driver_errors) issues.push(hl.driver_errors + " Hailo driver error" + (hl.driver_errors === 1 ? "" : "s") + " since boot");
+  piEls.note.className = "cal-status" + (issues.length ? " bad" : "");
+  piEls.note.textContent = issues.length ? "Attention: " + issues.join("; ") + "." : "All good: Hailo on the bus, detector producing frames, no throttling.";
+}
+
+async function pollPi(host) {
+  clearTimeout(piTimer);
+  try {
+    const response = await fetch("http://" + host + ":8087/stats", { cache: "no-store" });
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    piFails = 0;
+    renderPi(await response.json());
+  } catch {
+    piFails += 1;
+    piEls.state.dataset.state = piFails > 2 ? "error" : "connecting";
+    piEls.state.textContent = piFails > 2 ? "Unavailable" : "Connecting";
+    piEls.note.className = "cal-status bad";
+    piEls.note.textContent = "Pi stats not reachable at " + host + ":8087 (pi_stats.py on the Pi). If the whole Pi is frozen this is the first thing to go dark.";
+  }
+  if (normalizeHost(hostInput.value) === host) piTimer = setTimeout(() => pollPi(host), 2000);
+}
+
+piEls.retry.addEventListener("click", () => { const h = normalizeHost(hostInput.value); if (h) { piFails = 0; pollPi(h); } else hostInput.focus(); });
+
 // ---- Lidar room map (:8086, posted by the lidar laptop). Lidar positions + map only, no fusion with the INS.
 const mapEls = {
   state: document.querySelector("#map-state"), note: document.querySelector("#map-note"),

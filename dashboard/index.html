@@ -86,6 +86,49 @@
       </article>
     </section>
 
+    <section class="beacon-card" id="pi-card" aria-label="Raspberry Pi health">
+      <header class="card-header">
+        <div>
+          <p class="card-kicker">RASPBERRY PI · HEALTH</p>
+          <h2>CPU, Hailo &amp; detector</h2>
+        </div>
+        <span class="feed-state" id="pi-state" data-state="idle">Idle</span>
+      </header>
+      <div class="tiles" id="pi-tiles">
+        <div class="tile"><span class="tile-label">CPU</span><strong id="p-cpu">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Temperature</span><strong id="p-temp">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Memory</span><strong id="p-mem">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Load (1 / 5 / 15 min)</span><strong id="p-load">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Power / throttling</span><strong id="p-thr">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Hailo chip</span><strong id="p-hailo">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Detector</span><strong id="p-det">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Detector restarts (15 min)</span><strong id="p-restarts">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Cellular scan (Pluto)</span><strong id="p-cell">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Uptime</span><strong id="p-up">&mdash;</strong></div>
+      </div>
+      <div class="beacon-charts">
+        <figure>
+          <figcaption>CPU, last 5 min <small>(% of all cores)</small></figcaption>
+          <canvas id="c-pcpu" role="img" aria-label="CPU usage chart"></canvas>
+        </figure>
+        <figure>
+          <figcaption>Temperature, last 5 min <small>(&deg;C)</small></figcaption>
+          <canvas id="c-ptemp" role="img" aria-label="Temperature chart"></canvas>
+        </figure>
+        <div class="ping-log">
+          <p class="tile-label">CPU per core</p>
+          <ol id="p-cores"><li class="muted">Waiting&hellip;</li></ol>
+          <p class="tile-label" style="margin-top:12px">Busiest processes</p>
+          <ol id="p-top"><li class="muted">Waiting&hellip;</li></ol>
+        </div>
+      </div>
+      <p class="cal-status" id="pi-note" role="status" aria-live="polite">Pi stats: unknown until connected</p>
+      <footer class="card-footer">
+        <span class="endpoint">PI STATS · :8087</span>
+        <div class="actions"><button type="button" id="pi-retry">Retry</button></div>
+      </footer>
+    </section>
+
     <section class="beacon-card" id="sdr-card" aria-label="SDR phone detection">
       <header class="card-header">
         <div>
