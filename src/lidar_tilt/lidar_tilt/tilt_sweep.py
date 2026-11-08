@@ -19,11 +19,12 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import LaserScan, PointCloud2, PointField
+from std_msgs.msg import Int32
 from tf2_ros import TransformBroadcaster
 
 from lidar_tilt.tilt_math import scan_to_points
 
-DEFAULT_ANGLES = [-30.0, -25.0, -20.0, -15.0, -10.0, -5.0, 0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0]
+DEFAULT_ANGLES = [float(angle) for angle in range(-30, 31)]
 
 
 def _default_ply() -> str:
@@ -128,6 +129,8 @@ class TiltSweep(Node):
         self.declare_parameter("dead_max_deg", -180.0)
         self.declare_parameter("scan_topic", "/scan")
         self.declare_parameter("cloud_topic", "/tilt_cloud")
+        self.declare_parameter("slice_topic", "/tilt_slice")
+        self.declare_parameter("pass_topic", "/tilt_pass")
         self.declare_parameter("base_frame", "base_link")
         self.declare_parameter("output_ply", _default_ply())
         self.declare_parameter("continuous", True)
@@ -154,6 +157,15 @@ class TiltSweep(Node):
         self._cloud_pub = self.create_publisher(
             PointCloud2, str(self.get_parameter("cloud_topic").value), cloud_qos
         )
+        slice_qos = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            depth=5,
+        )
+        self._slice_pub = self.create_publisher(
+            PointCloud2, str(self.get_parameter("slice_topic").value), slice_qos
+        )
+        self._pass_pub = self.create_publisher(Int32, str(self.get_parameter("pass_topic").value), 10)
         self._tf = TransformBroadcaster(self)
         self._lock = threading.Lock()
         self._scan: LaserScan | None = None
@@ -233,7 +245,10 @@ class TiltSweep(Node):
             self._points = np.vstack(chunks) if chunks else np.zeros((0, 3), dtype=np.float64)
             total = int(self._points.shape[0])
             cloud = self._points
-        self._cloud_pub.publish(_xyz_cloud(cloud, self._base_frame, scan.header.stamp))
+        stamp = scan.header.stamp
+        self._cloud_pub.publish(_xyz_cloud(cloud, self._base_frame, stamp))
+        if points.shape[0]:
+            self._slice_pub.publish(_xyz_cloud(points, self._base_frame, stamp))
         return int(points.shape[0]), total
 
     def _save(self) -> int:
@@ -283,6 +298,9 @@ class TiltSweep(Node):
             else:
                 link = self._run_sequence(link, self._angles)
                 count = self._save()
+                done = Int32()
+                done.data = 1
+                self._pass_pub.publish(done)
                 self.get_logger().info(f"SWEEP_OK {count} points -> {self._output}")
         except Exception as exc:
             self.get_logger().error(f"SWEEP_FAIL {exc}")
@@ -330,6 +348,9 @@ class TiltSweep(Node):
             forward = not forward
             pass_index += 1
             count = self._save()
+            done = Int32()
+            done.data = pass_index
+            self._pass_pub.publish(done)
             self.get_logger().info(f"PASS {pass_index} {count} points -> {self._output}")
         return link
 

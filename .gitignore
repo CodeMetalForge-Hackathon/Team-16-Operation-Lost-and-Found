@@ -16,3 +16,4 @@ thermal/fusion_weights.json
 
 firmware/**/.pio/
 src/lidar_tilt/maps/*.ply
+src/lidar_tilt/maps/*.npz

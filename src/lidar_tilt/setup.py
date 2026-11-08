@@ -9,8 +9,14 @@ setup(
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
-        ("share/" + package_name + "/launch", ["launch/sweep.launch.py"]),
-        ("share/" + package_name + "/rviz", ["rviz/sweep.rviz"]),
+        (
+            "share/" + package_name + "/launch",
+            ["launch/sweep.launch.py", "launch/localize.launch.py"],
+        ),
+        (
+            "share/" + package_name + "/rviz",
+            ["rviz/sweep.rviz", "rviz/localize.rviz"],
+        ),
         ("share/" + package_name + "/maps", ["maps/.gitkeep"]),
     ],
     install_requires=["setuptools"],
@@ -22,6 +28,8 @@ setup(
     entry_points={
         "console_scripts": [
             "tilt_sweep = lidar_tilt.tilt_sweep:main",
+            "cloud_localize = lidar_tilt.cloud_localize:main",
+            "check_register = lidar_tilt.check_register:main",
         ],
     },
 )
