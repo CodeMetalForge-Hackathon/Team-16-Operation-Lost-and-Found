@@ -713,7 +713,7 @@ function renderMap(d) {
   mapEls.lock.textContent = cur ? "LOCKED" : "no lock";
   mapEls.xy.textContent = cur ? cur.x.toFixed(2) + " / " + cur.y.toFixed(2) : "—";
   mapEls.z.textContent = cur ? cur.z.toFixed(2) + " m" : "—";
-  mapEls.hdg.textContent = cur && cur.yawCw != null ? (((cur.yawCw % 360) + 360) % 360).toFixed(0) + "°" : "—";
+  mapEls.hdg.textContent = cur && cur.yawCw != null ? (Math.round(((cur.yawCw % 360) + 360) % 360) % 360) + "°" : "—";
   mapEls.dist.textContent = mapDist.toFixed(1) + " m";
   const cells = (d.outline || []).length;
   mapEls.note.className = "cal-status" + (cur ? "" : " bad");
