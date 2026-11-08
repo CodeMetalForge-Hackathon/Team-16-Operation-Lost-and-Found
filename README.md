@@ -139,3 +139,40 @@ To run it on the Pi and watch from your PC, copy `picam_color_anomaly.py` to the
 `python3 picam_color_anomaly.py --source local --headless --serve 8080`, then open
 `http://<pi address>:8080/`. Relearn there with `touch ~/relearn`.
 `picam/setup_picam.sh` builds libcamera for the Pi 5 on Ubuntu 24.04.
+
+## RPLidar C1 tilt map
+
+The C1 stays a 2D lidar on `/dev/ttyUSB0`. A Seeed XIAO ESP32-C5 on `/dev/ttyACM0` drives a hobby servo on D0 (5V, GND, signal). `tilt_sweep` sends `GOTO <degrees>`, waits for `AT <degrees>`, then keeps the next `/scan` and pitches it into `base_link`. The cloud on `/tilt_cloud` keeps the latest scan at each angle. The horn travels from -30 to 30 degrees and back until you stop the launch, and each pass rewrites `src/lidar_tilt/maps/room_cloud.ply`. Add `continuous:=false` for a single pass.
+
+Flash the board before the first sweep. The upload port is the XIAO, not the lidar.
+
+```bash
+cd firmware/lidar_tilt
+pio run -t upload --upload-port /dev/ttyACM0
+```
+
+Source ROS 2 Jazzy, the C1 driver workspace, and this repo:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source /path/to/sllidar/install/setup.bash
+source install/setup.bash
+colcon build --symlink-install --packages-select lidar_tilt
+ros2 launch lidar_tilt sweep.launch.py
+```
+
+Positive tilt pitches the laser frame about Y, which sends a forward ray toward -Z. If the cloud bends the wrong way, set `tilt_sign` to `-1.0`. Ranges closer than 0.15 m or past 12 m are dropped. `dead_min_deg` and `dead_max_deg` mask the mount. When the first number is greater than the second, the mask wraps past ±180°. Pulse width, the angle clamp, and the sweep rate are at the top of `firmware/lidar_tilt/src/main.cpp`. The horn eases between angles at about 8 degrees per second.
+
+## Terrain localization
+
+`terrain_localize` matches a 3D lidar `PointCloud2` on `/lidar/points` to a prior heightmap. There is no GPS, no initial pose, and no command output. The map in the repo is a synthetic 2 km hill (`src/terrain_localize/maps`). A real GeoTIFF can replace `synthetic_hill.npy` and the yaml beside it.
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+colcon build --symlink-install --packages-select terrain_localize terrain_gazebo
+ros2 run terrain_localize check_poses
+ros2 launch terrain_localize demo.launch.py
+```
+
+The check ray-casts three known poses and must recover each within 30 m and 15 degrees. The path demo opens RViz, steps eight stops, and writes `/tmp/terrain_path_demo.png`. Fixes are published on `/pose_fix`. `ros2 launch terrain_gazebo hill.launch.py` starts a headless Gazebo world for the same topic. On the Intel GPU in this laptop the heightmap shader does not compile, so use `ros2 run terrain_localize raycast_cloud` for the repeatable demo.
