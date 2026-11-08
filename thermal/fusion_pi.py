@@ -164,6 +164,17 @@ class FusionHailo(HailoBackend):
         return self.run(img)
 
 
+class NoHailo:
+    """Stand-in when the Hailo chip is missing/wedged: cameras and heat hotspots still work, no AI person boxes."""
+    name = "none"
+
+    def detect(self, img, color):
+        return 0.0, {}, []
+
+    def close(self):
+        pass
+
+
 # ----------------------------------------------------------------- thermal
 def hotspot_boxes(img):
     """Same hotspot logic as thermal_viewer.draw_hotspots, but returns (x, y, w, h) boxes."""
@@ -444,7 +455,12 @@ def main():
     if WEIGHTS.exists():
         W.update(json.loads(WEIGHTS.read_text()))
 
-    cpu, hailo = CpuBackend(), FusionHailo(a.hef)
+    cpu = CpuBackend()
+    try:
+        hailo = FusionHailo(a.hef)
+    except Exception as e:  # chip gone: keep the screens alive without AI boxes
+        print(f"HAILO UNAVAILABLE ({type(e).__name__}) - running cameras + heat hotspots only", flush=True)
+        hailo = NoHailo()
     global THERMAL
     thermal, visible = ThermalSource(a.device), VisibleSource(vw, vh, a.vis_fps, a.vis_rotation)
     THERMAL = thermal
