@@ -37,5 +37,4 @@ After the drone sweeps an area and finds nothing, call `bayes_update(prob, searc
 
 ## Caveats
 - `gazetteer.csv` coordinates are approximate. Check them against USGS or OSM before relying on them.
-- The distance percentiles are placeholders. Replace them with ISRID numbers.
-- The model has not been validated against real find locations. A good next step is to back-test it on cases in the missing_persons tab that have known find locations.
+- Limit: the distance model is an unscored placeholder. The percentiles stand in for Koester ISRID hiker tables, and the map has not been scored against known find locations. A good next step is to back-test it on cases in the missing_persons tab that have known find locations.

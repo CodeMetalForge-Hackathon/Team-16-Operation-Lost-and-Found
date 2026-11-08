@@ -8,7 +8,7 @@ Every phone-detect hit lands here, split by category. `rf_hub.py`
 
 | Unit | Runs | Feeds |
 |---|---|---|
-| `rf-feed-monitor.service` (root) | `monitor_scan.py` (Alfa ch1 monitor + hci0/hci1) | wifi, bt, ble |
+| `rf-feed-monitor.service` (root) | `monitor_scan.py` (Alfa ch1 monitor + hci2) | wifi, bt, ble |
 | `rf-feed-cell.service` (hacker) | `phone_scan.py` (Pluto uplink dwell) | cell |
 
 `run_pod.sh` pkills `phone_scan.py` for its demo window; the cell feed
@@ -19,7 +19,7 @@ restarts itself into ownership. Harmless.
 
 | File | Source records |
 |---|---|
-| `bt_classic.jsonl` | `kind: "bt"` (public-block MAC sightings, hci0/hci1) |
+| `bt_classic.jsonl` | `kind: "bt"` (public-block MAC sightings; the boot feed uses hci2) |
 | `ble.jsonl` | `kind: "ble"` (locally-administered MAC sightings) |
 | `cellular.jsonl` | rf hits from the Pluto (`hz`, `power_db`, `pose`) |
 | `wifi.jsonl` | `kind: "wifi-probe"` / `"wifi-assoc"` (Alfa monitor) |

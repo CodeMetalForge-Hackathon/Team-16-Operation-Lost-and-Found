@@ -3,6 +3,8 @@
 A homing beacon for search and rescue. It transmits steady, recognisable signals so rescuers can
 direction-find to it. Receive side is receive-only (SDR or a second LoRa board).
 
+Limit: there is no release mechanism. No servo drops it and there is no parachute. This build is carried and set down. Clear the channel with the hardware mentor before the first transmission.
+
 | Board | Environment | Signals |
 |---|---|---|
 | **LilyGO LoRa32 915 MHz** (ESP32-PICO-D4 + SX1276), the field unit | `esp32-pico` | **LoRa 915 MHz** (main, long range), Wi-Fi ch 11, BLE |

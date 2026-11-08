@@ -14,7 +14,7 @@ about once a second. Output is the `ins_coast` message from `SKILL.md` (`t, x, y
 | Same + lidar fix every 1 s (+/-5 m) | about 5 m RMS, 10 m worst |
 | Same, lidar drops out for 60 s | reaches about 120 m (team budget: 250 m per minute) |
 
-These come from a simulator with assumed sensor errors, so they check the logic and the order of magnitude, not
+Limit: these coast-error numbers are from simulation, not a flight. They check the logic and the order of magnitude, not
 the real hardware. Real numbers need the IMU on the drone. Accelerometer bias and orientation error dominate:
 1 degree of orientation error fakes 0.17 m/s^2 of sideways acceleration.
 

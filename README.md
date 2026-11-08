@@ -1,14 +1,22 @@
 # Team 16
 
-## Live sensor dashboard
+Operation Lost and Found: a pod for a missing person in the White Mountains when GPS, cell, and fixed comms are gone. Four lines of effort. The short status of each one is `LOE.md`. Run notes stay with the package.
 
-Start the dashboard from the repository root:
+## Locate the pod without GPS
 
-    python dashboard/serve.py
+The coast is `deadreckoning/` (`deadreckoning/README.md`). The terrain match is `src/terrain_localize/`. The table rig is `src/lidar_tilt/` and `firmware/lidar_tilt/`. Clipped elevation tiles go in `dem/` and are not committed (`dem/README.txt`). Run notes for the terrain match and the tilt rig are below.
 
-Open the local address printed by the server, enter the Pi hostname or IP
-address, and select **Connect screens**. The dashboard shows the fused detection screen on port 8081 and
-the thermal screen on port 8082.
+## Detect a person
+
+Vision is `thermal/` and `picam/`. Run notes for both are below. Neither folder has its own readme.
+
+## Decide where to look
+
+The search map is `search_hotspots/` (`search_hotspots/README.md`). The live picture is `dashboard/` (`dashboard/README.md`): fused detection, thermal view, beacon health, radio contacts, and inertial position.
+
+## Hand the find to a team on foot
+
+The beacon is `df_beacon/` (`df_beacon/README.md`). The receive-only radio is `src/team16_sdr/` (`src/team16_sdr/README.md`, hit categories and live ports in `src/team16_sdr/rfhits-README.md`).
 
 ## Windows thermal demo
 
