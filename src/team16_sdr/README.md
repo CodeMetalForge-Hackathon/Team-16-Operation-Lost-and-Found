@@ -35,10 +35,14 @@ strongest-signal-first and labels the top one `closest`. Demo runner:
 `bash run_pod.sh` brings up the Alfa monitor iface, starts all three feeds plus
 the coaxer, waits `SECONDS_WAIT` (default 60 s), then prints the report. Bait AP:
 `pod-bait.service` (oneshot, enabled) keeps `Low Quality Bait` on `wlan0`
-channel 1 across reboots. The Pluto is lock-guarded: `phone_scan.py` holds an
-exclusive flock on `/tmp/pluto-sdr.lock` (libiio allows one buffer per device);
-a second instance prints `ERROR: Pluto busy (holder has /tmp/pluto-sdr.lock)`
-and exits 1.
+channel 1 across reboots. Each Pluto is lock-guarded per device:
+`phone_scan.py` holds an exclusive flock on
+`/tmp/pluto-sdr-<serial6>.lock` (or `/tmp/pluto-sdr.lock` for bare
+`usb:`) because libiio allows one buffer per device, so two feeds on
+two Plutos coexist; a second instance on the SAME Pluto prints
+`ERROR: Pluto busy (holder has <lock>)` and exits 1. Pin a device with
+`--pluto-serial <s>` (resolves `usb:<bus>.<devnum>.5` via sysfs;
+devnums change across reboots).
 
 Honest scope: a phone transmits its PRACH preamble only after decoding a downlink
 cell (LTE: PSS/SSS sync, PBCH/MIB, SIB1, SIB2 `RACH-ConfigCommon`; NR: SSB + SIB1)

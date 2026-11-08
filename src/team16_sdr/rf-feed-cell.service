@@ -10,7 +10,7 @@ WorkingDirectory=/home/hacker/team16_sdr
 # '+' = runs as root despite User=: run_pod.sh may have recreated the
 # log root-owned; make sure it exists and belongs to hacker.
 ExecStartPre=+/bin/sh -c 'touch /home/hacker/team16_sdr/rf_hits.jsonl && chown hacker:hacker /home/hacker/team16_sdr/rf_hits.jsonl'
-ExecStart=/usr/bin/python3 /home/hacker/team16_sdr/phone_scan.py --uri usb: --gain 40 --out /home/hacker/team16_sdr/rf_hits.jsonl
+ExecStart=/usr/bin/python3 /home/hacker/team16_sdr/phone_scan.py --pluto-serial 10447318ac0f001010002b00314417f21e --gain 40 --out /home/hacker/team16_sdr/rf_hits.jsonl
 Restart=on-failure
 RestartSec=5
 

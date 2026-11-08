@@ -48,18 +48,20 @@ Every phone-detect hit lands here, split by category. `rf_hub.py`
 
 | Unit | Runs | Feeds |
 |---|---|---|
-| `rf-feed-monitor.service` (root) | `monitor_scan.py` (Alfa ch1 monitor + hci0/hci1) | wifi, bt, ble |
-| `rf-feed-cell.service` (hacker) | `phone_scan.py` (Pluto uplink dwell) | cell |
+| `rf-feed-monitor.service` (root) | `monitor_scan.py` (Alfa ch1 monitor + hci2 = Realtek NIC BT) | wifi, bt, ble |
+| `rf-feed-cell.service` (hacker) | `phone_scan.py` (Pluto 1 uplink dwell: B7/B4/B12) | cell |
+| `rf-feed-cell2.service` (hacker) | `phone_scan.py` (Pluto 2 uplink dwell: B1/B3/B20/B8) | cell |
 
 `run_pod.sh` pkills `phone_scan.py` for its demo window; the cell feed
-service then flaps (Pluto lock busy, rc=1) until the demo ends and
-restarts itself into ownership. Harmless.
+services then flap (Pluto lock busy, rc=1) until the demo ends and
+restart themselves into ownership. Harmless. Each Pluto has its own
+flock (`/tmp/pluto-sdr-<serial6>.lock`), so both cell feeds coexist.
 
 ## Files (newline-delimited JSON, one hit per line)
 
 | File | Source records |
 |---|---|
-| `bt_classic.jsonl` | `kind: "bt"` (public-block MAC sightings, hci0/hci1) |
+| `bt_classic.jsonl` | `kind: "bt"` (public-block MAC sightings, hci2) |
 | `ble.jsonl` | `kind: "ble"` (locally-administered MAC sightings) |
 | `cellular.jsonl` | rf hits from the Pluto (`hz`, `power_db`, `pose`) |
 | `wifi.jsonl` | `kind: "wifi-probe"` / `"wifi-assoc"` (Alfa monitor) |

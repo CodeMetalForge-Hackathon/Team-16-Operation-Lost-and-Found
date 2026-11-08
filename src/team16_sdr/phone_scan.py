@@ -18,14 +18,49 @@ import numpy as np
 
 GROUP_HZ = 1_000_000  # bin-group width for hit detection
 FULL_SCALE = 2048.0   # 12-bit IQ full scale
-PLUTO_LOCK = "/tmp/pluto-sdr.lock"  # /tmp: reboot-clean
+PLUTO_LOCK = "/tmp/pluto-sdr.lock"  # /tmp: reboot-clean (default, bare usb:)
 
 
-def acquire_pluto_lock():
+def resolve_uri(serial):
+    """`usb:<bus>.<devnum>.5` for the 0456:b673 Pluto with this serial.
+
+    libiio 0.25's usb backend takes bus.device.interface (ADI bulk pipes
+    live on interface 5) and has no serial= URI, so match the serial via
+    sysfs; survives reboots and devnum changes.
+    """
+    base = "/sys/bus/usb/devices"
+    for name in sorted(os.listdir(base)):
+        dev = os.path.join(base, name)
+        try:
+            with open(os.path.join(dev, "idVendor")) as f:
+                if f.read().strip() != "0456":
+                    continue
+            with open(os.path.join(dev, "serial")) as f:
+                if f.read().strip() != serial:
+                    continue
+            with open(os.path.join(dev, "devnum")) as f:
+                devnum = f.read().strip()
+        except (FileNotFoundError, PermissionError, NotADirectoryError):
+            continue
+        bus = name.split("-")[0].removeprefix("usb")
+        return f"usb:{bus}.{devnum}.5"
+    raise RuntimeError(f"no Pluto with serial {serial} on USB")
+
+
+def lock_path_for(uri, serial):
+    """Per-device lock so two feeds (two Plutos) coexist."""
+    if serial:
+        return f"/tmp/pluto-sdr-{serial[-6:]}.lock"
+    if uri != "usb:":
+        return f"/tmp/pluto-sdr-{uri.replace(':', '-')}.lock"
+    return PLUTO_LOCK
+
+
+def acquire_pluto_lock(path=PLUTO_LOCK):
     """Exclusive flock held for the process lifetime; None if busy.
 
     libiio allows ONE buffer per device, so exactly one phone_scan.py
-    may own the Pluto. Release is implicit when the process exits.
+    may own each Pluto (lock path is per-device; see lock_path_for).
     Sticky-/tmp regular-file protection denies O_RDWR|O_CREAT across
     owners (root demo vs hacker manual run), so fall back through
     plain O_RDWR / O_RDONLY (flock ignores the access mode) before
@@ -35,12 +70,12 @@ def acquire_pluto_lock():
     for flags in (os.O_CREAT | os.O_RDWR, os.O_RDWR, os.O_RDONLY,
                   os.O_CREAT | os.O_WRONLY):
         try:
-            fd = os.open(PLUTO_LOCK, flags, 0o644)
+            fd = os.open(path, flags, 0o644)
             break
         except (PermissionError, FileNotFoundError):
             continue
     if fd is None:
-        raise RuntimeError(f"cannot open {PLUTO_LOCK}")
+        raise RuntimeError(f"cannot open {path}")
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
@@ -141,6 +176,9 @@ def analyze(iq, samplerate, margin_db):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--uri", default="usb:")
+    ap.add_argument("--pluto-serial", default=None,
+                    help="Pluto USB serial; resolves a stable usb:B.D.5 URI "
+                         "via sysfs (devnums change across reboots)")
     ap.add_argument("--freq", type=int, default=2_535_000_000,
                     help="single channel for one-shot dwells (walk_log)")
     ap.add_argument("--samplerate", type=float, default=20e6)
@@ -155,8 +193,12 @@ def main():
     args = ap.parse_args()
 
     channels = [int(c) for c in args.channels.split(",") if c.strip()]
-    if acquire_pluto_lock() is None:
-        print("ERROR: Pluto busy (holder has /tmp/pluto-sdr.lock)",
+    if args.pluto_serial:
+        args.uri = resolve_uri(args.pluto_serial)
+    lock = acquire_pluto_lock(lock_path_for(args.uri, args.pluto_serial))
+    if lock is None:
+        print(f"ERROR: Pluto busy (holder has "
+              f"{lock_path_for(args.uri, args.pluto_serial)})",
               file=sys.stderr)
         return 1
     phy, lpc = open_device(args.uri, channels[0], args.samplerate,
