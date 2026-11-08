@@ -255,3 +255,59 @@ button.primary:hover { background: #8affc4; }
 .cal-status.bad { color: #ff7a6b; }
 button.calibrate { border-color: rgba(255, 190, 0, 0.55); }
 button:disabled { opacity: 0.55; cursor: progress; }
+
+/* ---- DF beacon panel ---- */
+.beacon-card { margin-top: 14px; min-width: 0; background: rgba(9, 16, 14, 0.94); border: 1px solid var(--line); }
+.tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-block: 1px solid var(--line); }
+.tile { padding: 12px 16px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); min-width: 0; }
+.tile:nth-child(5n) { border-right: 0; }
+.tile:nth-last-child(-n+5) { border-bottom: 0; }
+.tile-label { display: block; margin: 0 0 6px; color: var(--muted); font: 650 0.66rem/1 ui-monospace, "Cascadia Mono", monospace; letter-spacing: 0.1em; text-transform: uppercase; }
+.tile strong { display: block; font: 600 1.25rem/1.15 ui-monospace, "Cascadia Mono", monospace; overflow-wrap: anywhere; }
+.tile strong.good { color: var(--green); }
+.tile strong.warn { color: var(--amber); }
+.tile strong.bad { color: var(--red); }
+.beacon-charts { display: grid; grid-template-columns: 1.4fr 1fr 0.8fr; gap: 0; }
+.beacon-charts figure { margin: 0; padding: 12px 16px; border-right: 1px solid var(--line); min-width: 0; }
+.beacon-charts figcaption { color: var(--muted); font-size: 0.78rem; margin-bottom: 8px; }
+.beacon-charts figcaption small { color: #71847d; }
+.beacon-charts canvas { display: block; width: 100%; height: 150px; }
+.ping-log { padding: 12px 16px; min-width: 0; }
+.ping-log ol { margin: 0; padding: 0; list-style: none; font: 500 0.76rem/1.55 ui-monospace, "Cascadia Mono", monospace; max-height: 170px; overflow: auto; }
+.ping-log li { display: flex; justify-content: space-between; gap: 8px; color: #b8c8c2; }
+.ping-log li.gap { color: var(--amber); }
+.ping-log li.muted { color: #71847d; }
+@media (max-width: 900px) {
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tile:nth-child(5n) { border-right: 1px solid var(--line); }
+  .tile:nth-child(2n) { border-right: 0; }
+  .tile:nth-last-child(-n+5) { border-bottom: 1px solid var(--line); }
+  .beacon-charts { grid-template-columns: 1fr; }
+  .beacon-charts figure { border-right: 0; border-bottom: 1px solid var(--line); }
+}
+
+/* ---- INS dead-reckoning panel ---- */
+.ins-card { margin-top: 14px; min-width: 0; background: rgba(9, 16, 14, 0.94); border: 1px solid var(--line); }
+.ins-form { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) auto; gap: 12px; align-items: end; padding: 14px 16px; border-top: 1px solid var(--line); }
+.ins-form label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font: 650 0.68rem/1.1 ui-monospace, "Cascadia Mono", monospace; letter-spacing: 0.08em; text-transform: uppercase; min-width: 0; }
+.ins-form label small { color: #71847d; text-transform: none; letter-spacing: 0; font-weight: 500; }
+.ins-form input { flex: none; width: 100%; font: 500 0.95rem ui-monospace, "Cascadia Mono", monospace; }
+.ins-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.ins-tiles .tile:nth-child(5n) { border-right: 0; }
+.mode-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+.mode-buttons button { font-size: 0.72rem; padding: 6px 9px; }
+.mode-buttons button.on { color: #03100a; background: var(--green); border-color: var(--green); font-weight: 700; }
+.ins-plot { margin: 0; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.ins-plot figcaption { color: var(--muted); font-size: 0.78rem; margin-bottom: 8px; }
+.ins-plot figcaption small { color: #71847d; }
+.ins-plot canvas { display: block; width: 100%; height: 320px; }
+@media (max-width: 900px) {
+  .ins-form { grid-template-columns: 1fr 1fr; }
+  .ins-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ins-tiles .tile:nth-child(5n) { border-right: 1px solid var(--line); }
+  .ins-tiles .tile:nth-child(2n) { border-right: 0; }
+}
+
+.ins-check { display: flex; align-items: center; gap: 10px; padding: 0 16px 12px; color: #b8c8c2; font-size: 0.85rem; flex-wrap: wrap; }
+.ins-check input { flex: none; width: 18px; height: 18px; accent-color: var(--green); }
+.ins-check small { color: #71847d; font-size: 0.75rem; }

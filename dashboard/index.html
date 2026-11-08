@@ -86,6 +86,105 @@
       </article>
     </section>
 
+    <section class="beacon-card" id="beacon-card" aria-label="DF beacon telemetry">
+      <header class="card-header">
+        <div>
+          <p class="card-kicker">DF BEACON · LORA 915 MHZ</p>
+          <h2>Transmitter health &amp; pings</h2>
+        </div>
+        <span class="feed-state" id="beacon-state" data-state="idle">Idle</span>
+      </header>
+      <div class="tiles" id="beacon-tiles">
+        <div class="tile" id="t-link"><span class="tile-label">Link</span><strong id="b-link">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Last heard</span><strong id="b-age">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Signal (RSSI)</span><strong id="b-rssi-now">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">SNR</span><strong id="b-snr">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Packet loss (60 s)</span><strong id="b-loss">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Pings / min</span><strong id="b-rate">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Beacon uptime</span><strong id="b-uptime">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Battery</span><strong id="b-batt">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">SDR power</span><strong id="b-sdr-now">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Beacon ID</span><strong id="b-id">&mdash;</strong></div>
+      </div>
+      <div class="beacon-charts">
+        <figure>
+          <figcaption>Signal strength, last 5 min <small>(dBm, higher is closer)</small></figcaption>
+          <canvas id="c-rssi" role="img" aria-label="Signal strength chart"></canvas>
+        </figure>
+        <figure>
+          <figcaption>SDR power at 915 MHz <small id="b-sdr-note">no SDR connected</small></figcaption>
+          <canvas id="c-sdr" role="img" aria-label="SDR power chart"></canvas>
+        </figure>
+        <div class="ping-log">
+          <p class="tile-label">Recent pings</p>
+          <ol id="b-pings"><li class="muted">Waiting for the first ping&hellip;</li></ol>
+        </div>
+      </div>
+      <p class="cal-status" id="beacon-note" role="status" aria-live="polite">Beacon feed: unknown until connected</p>
+      <footer class="card-footer">
+        <span class="endpoint">BEACON FEED · :8083</span>
+        <div class="actions"><button type="button" id="beacon-retry">Retry</button></div>
+      </footer>
+    </section>
+
+    <section class="ins-card" id="ins-card" aria-label="Drone position, dead reckoning">
+      <header class="card-header">
+        <div>
+          <p class="card-kicker">DRONE · INS DEAD RECKONING</p>
+          <h2>Position without GPS</h2>
+        </div>
+        <span class="feed-state" id="ins-state" data-state="idle">Idle</span>
+      </header>
+      <form class="ins-form" id="ins-form" autocomplete="off">
+        <label>Start latitude <small>decimal degrees</small>
+          <input id="ins-lat" inputmode="decimal" placeholder="44.270600" spellcheck="false">
+        </label>
+        <label>Start longitude <small>decimal degrees</small>
+          <input id="ins-lon" inputmode="decimal" placeholder="-71.303300" spellcheck="false">
+        </label>
+        <label>Start altitude <small>metres</small>
+          <input id="ins-alt" inputmode="decimal" placeholder="0">
+        </label>
+        <label>Start heading <small>compass degrees, 0 = north</small>
+          <input id="ins-heading" inputmode="decimal" placeholder="0">
+        </label>
+        <label>INS service address <small>blank = the Pi</small>
+          <input id="ins-host" placeholder="same as Pi address" spellcheck="false">
+        </label>
+        <button class="primary" type="submit" id="ins-set">Set start</button>
+      </form>
+      <label class="ins-check"><input type="checkbox" id="ins-mag"> Use the compass (magnetometer) for heading
+        <small>turn off indoors: near metal it is badly wrong, and heading then comes from the gyro and the start heading</small></label>
+      <p class="cal-status" id="ins-msg" role="status" aria-live="polite">INS service: not connected yet</p>
+      <div class="tiles ins-tiles">
+        <div class="tile"><span class="tile-label">Position (DD)</span><strong id="i-dd">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Altitude</span><strong id="i-alt">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Ground speed</span><strong id="i-speed">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Heading</span><strong id="i-hdg">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Uncertainty (1&sigma;)</span><strong id="i-sigma">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Offset from start</span><strong id="i-off">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Lidar fixes</span><strong id="i-fixes">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Flight state</span><strong id="i-mode">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Input source</span><strong id="i-src">&mdash;</strong></div>
+        <div class="tile"><span class="tile-label">Mode override</span>
+          <span class="mode-buttons" id="i-modes">
+            <button type="button" data-mode="auto">Auto</button>
+            <button type="button" data-mode="flying">Flying</button>
+            <button type="button" data-mode="grounded">Landed</button>
+            <button type="button" data-mode="walking">Walking</button>
+          </span>
+        </div>
+      </div>
+      <figure class="ins-plot">
+        <figcaption>Track from the start, metres east / north <small>(green = start, circle = uncertainty)</small></figcaption>
+        <canvas id="c-ins" role="img" aria-label="Dead reckoning track"></canvas>
+      </figure>
+      <footer class="card-footer">
+        <span class="endpoint">INS SERVICE · :8084</span>
+        <div class="actions"><button type="button" id="ins-retry">Retry</button></div>
+      </footer>
+    </section>
+
     <footer class="page-footer">
       <span>TEAM 16 · EDGE SENSOR CONSOLE</span>
       <span id="clock" aria-label="Local time"></span>
