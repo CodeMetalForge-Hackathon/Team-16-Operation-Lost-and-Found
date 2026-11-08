@@ -79,8 +79,40 @@ function connectAll() {
   hostInput.value = host;
   cards.forEach((card) => connectCard(card, host));
   pollCalibration(host, document.querySelector("[data-action=recalibrate]"));
+  watchFeeds(host);
   pollBeacon(host);
+  pollSdr(host);
   pollIns();
+}
+
+// Keeps the camera tiles honest: if the detector on the Pi stops making frames the tiles say so instead of
+// showing a frozen picture as Live, and when it is back they reconnect by themselves (no Retry needed).
+let watchTimer = null;
+async function watchFeeds(host) {
+  clearTimeout(watchTimer);
+  let producing = false;
+  try {
+    const response = await fetch("http://" + host + ":8081/calibrate/status", { cache: "no-store" });
+    const info = await response.json();
+    producing = response.ok && !/^Fusion process/.test(info.message || "");
+  } catch { /* Pi or web process unreachable */ }
+  for (const card of cards) {
+    const state = card.querySelector(".feed-state").dataset.state;
+    if (producing && state === "error") connectCard(card, host);
+    if (!producing && state === "live") {
+      card.querySelector("img").removeAttribute("src");
+      setCardState(card, "error", "Detector restarting");
+      updateSystemState();
+    }
+  }
+  if (producing && calStatus.textContent.startsWith("Detector is restarting")) {
+    pollCalibration(host, document.querySelector("[data-action=recalibrate]"));
+  }
+  if (!producing && !calStatus.classList.contains("busy")) {
+    calStatus.className = "cal-status bad";
+    calStatus.textContent = "Detector is restarting on the Pi. The screens reconnect by themselves.";
+  }
+  if (normalizeHost(hostInput.value) === host) watchTimer = setTimeout(() => watchFeeds(host), 3000);
 }
 
 connectButton.addEventListener("click", connectAll);
@@ -328,6 +360,104 @@ async function pollBeacon(host) {
 beaconEls.retry.addEventListener("click", () => {
   const host = normalizeHost(hostInput.value);
   if (host) { beaconFails = 0; pollBeacon(host); } else hostInput.focus();
+});
+
+// ---------------------------------------------------------------- SDR phone detect (:8085, bridge to the rf hub)
+const sdrEls = {
+  state: document.querySelector("#sdr-state"), note: document.querySelector("#sdr-note"),
+  hub: document.querySelector("#s-hub"), close: document.querySelector("#s-close"),
+  closeRssi: document.querySelector("#s-close-rssi"), wifi: document.querySelector("#s-wifi"),
+  ble: document.querySelector("#s-ble"), bt: document.querySelector("#s-bt"),
+  cellRate: document.querySelector("#s-cell-rate"), cellBest: document.querySelector("#s-cell-best"),
+  rate: document.querySelector("#s-rate"), total: document.querySelector("#s-total"),
+  cellNote: document.querySelector("#s-cell-note"), devices: document.querySelector("#s-devices"),
+  events: document.querySelector("#s-events"), retry: document.querySelector("#sdr-retry"),
+};
+let sdrTimer = null;
+let sdrFails = 0;
+const CAT_LABEL = { wifi: "Wi-Fi", ble: "BLE", bt: "BT", cell: "Cell" };
+
+function fillList(ol, rows, emptyText) {
+  ol.replaceChildren();
+  if (!rows.length) {
+    const li = document.createElement("li");
+    li.className = "muted"; li.textContent = emptyText;
+    ol.append(li);
+    return;
+  }
+  for (const [left, right] of rows) {
+    const li = document.createElement("li");
+    const a = document.createElement("span"), b = document.createElement("span");
+    a.textContent = left; b.textContent = right;
+    li.append(a, b);
+    ol.append(li);
+  }
+}
+
+function renderSdr(d) {
+  const down = Object.entries(d.hub).filter(([, up]) => !up).map(([c]) => CAT_LABEL[c]);
+  sdrEls.state.dataset.state = d.hub_all_up ? "live" : d.hub_any_up ? "connecting" : "error";
+  sdrEls.state.textContent = d.hub_all_up ? "Listening" : d.hub_any_up ? "Partial" : "Hub offline";
+  setTile(sdrEls.hub, d.hub_all_up ? "ALL 4 UP" : d.hub_any_up ? down.join(", ") + " down" : "OFFLINE",
+          d.hub_all_up ? "good" : d.hub_any_up ? "warn" : "bad");
+  const c = d.closest;
+  setTile(sdrEls.close, c ? (c.name || c.mac) : "—", c ? "good" : "");
+  setTile(sdrEls.closeRssi, c ? c.rssi + " dBm (" + CAT_LABEL[c.cat] + ")" : "—");
+  setTile(sdrEls.wifi, String(d.active.wifi));
+  setTile(sdrEls.ble, String(d.active.ble));
+  setTile(sdrEls.bt, String(d.active.bt));
+  setTile(sdrEls.cellRate, String(d.per_min.cell), d.per_min.cell ? "good" : "");
+  const best = d.cell.channels.slice().sort((a, b) => b.power_db - a.power_db)[0];
+  setTile(sdrEls.cellBest, best ? (best.band ? best.band + " · " : "") + best.mhz + " MHz" : "—");
+  const perMin = Object.values(d.per_min).reduce((a, b) => a + b, 0);
+  setTile(sdrEls.rate, String(perMin));
+  setTile(sdrEls.total, String(Object.values(d.counts).reduce((a, b) => a + b, 0)));
+
+  const devs = d.devices.slice().sort((a, b) => (b.rssi ?? -999) - (a.rssi ?? -999)).slice(0, 12)
+    .map((x) => [CAT_LABEL[x.cat] + " " + (x.name || x.mac), (x.rssi == null ? "?" : x.rssi + " dBm") + " · " + Math.round(x.age_s) + " s"]);
+  fillList(sdrEls.devices, devs, "No devices heard in the last 5 min");
+  const evs = d.events.slice().reverse().slice(0, 12).map((e) => {
+    const when = new Date(e.t * 1000).toLocaleTimeString([], { hour12: false });
+    return e.cat === "cell"
+      ? [when + " Cell " + (e.hz / 1e6).toFixed(0) + " MHz", e.power_db + " dB"]
+      : [when + " " + CAT_LABEL[e.cat] + " " + (e.name || e.mac), e.rssi == null ? "?" : e.rssi + " dBm"];
+  });
+  fillList(sdrEls.events, evs, "No hits yet");
+
+  const pts = d.cell.history.map((p) => ({ t: p.t, v: p.v }));
+  const vals = pts.map((p) => p.v);
+  const lo = vals.length ? Math.floor((Math.min(...vals) - 3) / 10) * 10 : -110;
+  const hi = vals.length ? Math.max(lo + 30, Math.ceil((Math.max(...vals) + 3) / 10) * 10) : -60;
+  drawChart(document.querySelector("#c-cell"), pts, { range: [lo, hi], step: 10, color: "--amber", gap: 30, dots: true, empty: "no cellular hits" });
+  sdrEls.cellNote.textContent = d.cell.channels.length
+    ? d.cell.channels.map((x) => (x.band || "") + " " + x.mhz + " MHz: " + x.power_db + " dB").join(" · ")
+    : "Pluto, no hits yet";
+  sdrEls.note.className = "cal-status " + (d.hub_all_up ? "ok" : "bad");
+  sdrEls.note.textContent = d.hub_all_up
+    ? "Receive-only. Signal is relative strength, not direction: walk toward the strongest reading."
+    : "RF hub not fully running on the Pi (" + (down.join(", ") || "none") + " not connected)";
+}
+
+async function pollSdr(host) {
+  clearTimeout(sdrTimer);
+  try {
+    const response = await fetch("http://" + host + ":8085/sdr", { cache: "no-store" });
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    sdrFails = 0;
+    renderSdr(await response.json());
+  } catch {
+    sdrFails += 1;
+    sdrEls.state.dataset.state = sdrFails > 2 ? "error" : "connecting";
+    sdrEls.state.textContent = sdrFails > 2 ? "Unavailable" : "Connecting";
+    sdrEls.note.className = "cal-status bad";
+    sdrEls.note.textContent = "Could not reach the SDR feed on the Pi (port 8085)";
+  }
+  if (normalizeHost(hostInput.value) === host) sdrTimer = setTimeout(() => pollSdr(host), 1000);
+}
+
+sdrEls.retry.addEventListener("click", () => {
+  const host = normalizeHost(hostInput.value);
+  if (host) { sdrFails = 0; pollSdr(host); } else hostInput.focus();
 });
 
 // ---------------------------------------------------------------- INS dead reckoning (:8084)

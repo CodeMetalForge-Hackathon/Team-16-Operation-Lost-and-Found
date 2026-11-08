@@ -16,7 +16,7 @@ LOG=../fusion.log
 P=""
 
 say() { echo "[supervisor $(date '+%F %T')] $*" >> "$LOG"; }
-RESTART_EVERY=${FUSION_RESTART_SECS:-600}  # scheduled clean restart (cameras + Hailo), 0 = off. Costs ~20 s of video.
+RESTART_EVERY=${FUSION_RESTART_SECS:-0}  # scheduled restart, 0 = off (default). Off because every forced stop risks wedging the Hailo.
 kill_child() {  # polite first (releases Hailo cleanly), then force. $1 = "quiet" skips the stack dump
   [ -n "$P" ] && kill -0 "$P" 2>/dev/null || return 0
   [ "$1" = quiet ] || { kill -USR1 "$P" 2>/dev/null; sleep 1; }   # stack dump into the log for diagnosis
@@ -28,6 +28,7 @@ kill_child() {  # polite first (releases Hailo cleanly), then force. $1 = "quiet
 trap 'kill_child; exit 0' TERM INT
 
 RESTARTS=0
+FAILS=0   # consecutive runs that died within 45 s: back off so a dead Hailo is not hammered
 while true; do
   python3 fusion_pi.py --log ../fusion_detections.jsonl "$@" >> "$LOG" 2>&1 < /dev/null &
   P=$!
@@ -52,6 +53,10 @@ while true; do
   done
   wait "$P" 2>/dev/null
   RESTARTS=$((RESTARTS + 1))
-  say "detector stopped, restarting in 5 s"
-  sleep 5
+  if [ $(( $(date +%s) - START )) -lt 45 ]; then FAILS=$((FAILS + 1)); else FAILS=0; fi
+  DELAY=5
+  [ "$FAILS" -ge 2 ] && DELAY=$((FAILS * 15))
+  [ "$DELAY" -gt 90 ] && DELAY=90
+  say "detector stopped, restarting in ${DELAY}s"
+  sleep "$DELAY"
 done
