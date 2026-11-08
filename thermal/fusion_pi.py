@@ -34,6 +34,7 @@ WEIGHTS = HERE / "fusion_weights.json"
 # Hand-set logistic weights (no paired training data yet). Override with fusion_weights.json.
 W = {"b": -3.0, "visible": 3.0, "thermal": 1.5, "match": 2.0}
 THERMAL_SHAPE = (192, 256)  # rows, cols of the cropped thermal frame
+THERMAL_FPS = 18  # the camera delivers 25; frames beyond this rate are dropped to save CPU
 THM_SCALE_YOLO = 0.25       # thermal YOLO scores run low; this score counts as "full"
 
 
@@ -87,8 +88,10 @@ class ThermalSource(Latest):
             ok, f = self.cap.read()
             if ok:
                 fails = 0
-                self.t_frame = time.time()
-                self.push(thermal_crop(f))
+                now = time.time()
+                if now - self.t_frame >= 1.0 / THERMAL_FPS - 0.002:
+                    self.t_frame = now
+                    self.push(thermal_crop(f))
             else:
                 fails += 1
                 time.sleep(0.05)
@@ -373,8 +376,16 @@ class AutoCalib:
         ys = [(tb[1], vb[1]) for tb, vb in s] + [(tb[3], vb[3]) for tb, vb in s]
         sx, ox, ex = self._fit(xs)
         sy, oy, ey = self._fit(ys)
-        if not (sx > 0 and sy > 0 and 0.6 < sy / sx < 1.6):
-            self.msg = f"Failed: implausible fit (scale {sx:.2f}/{sy:.2f}). Try again, standing alone and moving."
+        spread_x = max(a for a, _ in xs) - min(a for a, _ in xs)  # thermal px the person actually covered
+        spread_y = max(a for a, _ in ys) - min(a for a, _ in ys)
+        print(f"calibration fit: sx={sx:.2f} sy={sy:.2f} thermal spread x={spread_x:.0f}px y={spread_y:.0f}px samples={len(s)}", flush=True)
+        if spread_x < 40:
+            self.msg = (f"Failed: you only covered {spread_x:.0f} px of the thermal image left-to-right (need 40+). "
+                        "Walk slowly from one side of the thermal view to the other, fully in view, alone.")
+            print("calibration:", self.msg, flush=True)
+            return False
+        if not (sx > 0 and sy > 0 and 0.6 < sy / sx < 2.0):
+            self.msg = f"Failed: implausible fit (scale {sx:.2f}/{sy:.2f}, x-range {spread_x:.0f}px). Try again, standing alone and moving."
             print("calibration:", self.msg, flush=True)
             return False
         CALIB.write_text(json.dumps({"H": [[sx, 0, ox], [0, sy, oy], [0, 0, 1]], "vis_w": vis_shape[1],
