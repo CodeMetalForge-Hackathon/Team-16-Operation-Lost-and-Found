@@ -294,6 +294,7 @@ def render(vis, thm, targets, overall, te, calibrated, stats, rect, rf_p, thm_sc
         if tg["tbox"] is not None:
             x, y, w, h = [int(c * ts) for c in tg["tbox"]]
             cv2.rectangle(t, (x, y), (x + w, y + h), col, 2)
+    t = cv2.rotate(t, cv2.ROTATE_180)  # camera is mounted upside down: show it upright (processing uses the raw orientation)
     col = (0, 220, 0) if overall >= 0.6 else (0, 190, 255) if overall >= 0.3 else (200, 200, 200)
     note = "" if calibrated else "UNCALIBRATED  "
     fused = np.vstack([v, status_bar(v.shape[1], f"FUSED human likelihood {overall:.0%}", col,
@@ -445,6 +446,7 @@ def main():
     ap.add_argument("--record", metavar="DIR", help="also save paired raw frames here")
     ap.add_argument("--record-every", type=float, default=2.0, help="seconds between saved pairs")
     ap.add_argument("--log", default="fusion_detections.jsonl")
+    ap.add_argument("--no-hailo", action="store_true", help="skip the Hailo chip (cameras + thermal classifier only)")
     a = ap.parse_args()
     def _term(*_):
         raise KeyboardInterrupt  # lets the finally block release the Hailo and cameras cleanly
@@ -457,6 +459,8 @@ def main():
 
     cpu = CpuBackend()
     try:
+        if a.no_hailo:
+            raise RuntimeError("--no-hailo")
         hailo = FusionHailo(a.hef)
     except Exception as e:  # chip gone: keep the screens alive without AI boxes
         print(f"HAILO UNAVAILABLE ({type(e).__name__}) - running cameras + heat hotspots only", flush=True)

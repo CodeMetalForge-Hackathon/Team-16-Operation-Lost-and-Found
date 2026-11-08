@@ -182,8 +182,6 @@ button.primary:hover { background: #8affc4; }
 }
 
 .screen-card.is-live .viewport img { display: block; }
-/* the thermal camera is mounted upside down: rotate its tile only (the fused view is already upright) */
-.screen-card[data-screen="thermal"] .viewport img { transform: rotate(180deg); }
 .screen-card.is-live .placeholder { display: none; }
 
 .placeholder {
