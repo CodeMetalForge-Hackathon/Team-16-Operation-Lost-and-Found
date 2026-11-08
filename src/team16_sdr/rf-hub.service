@@ -1,0 +1,13 @@
+[Unit]
+Description=Team16 rfhits hub (dashboard logs + live ports)
+After=network-online.target pod-bait.service
+
+[Service]
+Type=simple
+User=hacker
+ExecStart=/usr/bin/python3 /home/hacker/team16_sdr/rf_hub.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

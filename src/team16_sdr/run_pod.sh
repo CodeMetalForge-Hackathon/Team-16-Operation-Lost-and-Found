@@ -15,6 +15,7 @@ MON=monitor_hits.jsonl
 RF=rf_hits.jsonl
 CONTACTS=phone_contacts.jsonl
 rm -f "$MON" "$RF" "$CONTACTS"   # demo window only
+systemctl is-active --quiet rf-hub || sudo -n systemctl start rf-hub
 
 pkill -9 -f "[p]hone_scan.py" 2>/dev/null   # libiio: one buffer per device
 
